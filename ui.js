@@ -288,7 +288,7 @@ function updateUI() {
     }
 
     // 1. 三国纪年
-    DOM.eraYear.textContent = `${Game.getYearName()} (${state.year}年)`;
+    DOM.eraYear.textContent = Game.getYearName();
     DOM.eraSeason.textContent = Game.getSeasonName();
 
     // 2. 资源更新

@@ -603,13 +603,32 @@ function getGameStateForUI() {
     };
 }
 
+function toChineseYear(num) {
+    if (num === 1) return '元';
+    const digit = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    if (num <= 9) return digit[num];
+    if (num <= 99) {
+        const d1 = Math.floor(num / 10);
+        const d2 = num % 10;
+        let str = '';
+        if (d1 > 1) str += digit[d1];
+        str += '十';
+        if (d2 > 0) str += digit[d2];
+        return str;
+    }
+    return num.toString();
+}
+
 function getYearName() {
     const diff = GameState.year - 184;
-    if (diff < 6) return `中平${["元", "二", "三", "四", "五", "六"][diff]}年`;
-    if (diff < 10) return `初平${["元", "二", "三", "四"][diff - 6]}年`;
-    if (diff < 12) return `兴平${["元", "二"][diff - 10]}年`;
-    if (diff < 37) return `建安${diff - 12 + 1}年`;
-    return `三国${GameState.year}年`;
+    if (diff < 6) return `中平${toChineseYear(diff + 1)}年`;
+    if (diff < 10) return `初平${toChineseYear(diff - 6 + 1)}年`;
+    if (diff < 12) return `兴平${toChineseYear(diff - 10 + 1)}年`;
+    if (diff < 37) return `建安${toChineseYear(diff - 12 + 1)}年`;
+
+    // 如果超过公元220年 (建安二十五年之后)
+    const beyondYear = GameState.year - 219;
+    return `黄初${toChineseYear(beyondYear)}年`;
 }
 
 function getSeasonName() {
