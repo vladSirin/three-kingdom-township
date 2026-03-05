@@ -538,6 +538,8 @@ button#restart-btn:active {
     flex-direction: column;
     gap: 12px;
     width: 100%;
+    padding-bottom: max(env(safe-area-inset-bottom), 80px);
+    /* 留出底部空白防触碰 */
 }
 
 .choice-btn {

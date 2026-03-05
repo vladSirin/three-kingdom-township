@@ -158,8 +158,8 @@ window.renderChatLog = function (log) {
     el.innerText = textContent;
 
     // 随机初始位置和轨迹
-    // 假设卡片占据中间，弹幕主要在屏幕上半部 10% - 70% 的区域随机出现
-    const topPercent = 10 + Math.random() * 60;
+    // 限制在屏幕上半部 10% - 50% 的区域随机出现，避免遮挡底部的选项按钮
+    const topPercent = 10 + Math.random() * 40;
     el.style.top = `${topPercent}%`;
 
     // 随机持续时间 —— 文字越长速度越慢
