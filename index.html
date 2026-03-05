@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.png">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>三国小镇 | Three Kingdoms Township</title>
+    <link rel="stylesheet" href="style.css?v=4.7">
+</head>
+
+<body>
+    <div id="app">
+        <!-- 开场介绍 -->
+        <div id="intro-screen">
+            <div class="intro-content">
+                <h1 class="intro-title">三国小镇</h1>
+                <p class="intro-subtitle">Three Kingdoms: Township</p>
+
+                <div class="intro-story">
+                    <p>汉灵帝中平元年，黄巾乱起，天下大乱。</p>
+                    <p>你是一个偏远小镇的地方官员，</p>
+                    <p>需要在这乱世之中求生存、谋发展。</p>
+                    <p class="intro-hint">每个决策都将影响你的命运...</p>
+                </div>
+
+                <button id="start-btn">开始游戏</button>
+
+                <div class="intro-controls">
+                    <p>操作说明</p>
+                    <div class="control-hints">
+                        <span>← A键 保守</span>
+                        <span>↑ W键 中立</span>
+                        <span>→ D键 冒险</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏主界面 (1920x1080 布局 / 竖屏适配) -->
+        <div id="game-screen" class="hidden">
+
+            <!-- 顶部 HUD：左侧年代，中右侧资源，极右侧建筑按钮 -->
+            <header id="hud-top">
+                <div id="era-display-top">
+                    <span id="era-year">中平元年</span> <span id="era-season">春</span>
+                </div>
+                <!-- 建筑入口小图标 -->
+                <button id="mobile-build-btn" class="icon-btn">🏠</button>
+            </header>
+
+            <!-- 资源水平栏 -->
+            <nav id="resource-bar-top">
+                <div class="resource-pill" data-resource="morale">
+                    <span class="res-icon">👥</span>
+                    <div class="res-bar-track">
+                        <div class="res-bar-fill"></div>
+                    </div>
+                </div>
+                <div class="resource-pill" data-resource="food">
+                    <span class="res-icon">🌾</span>
+                    <div class="res-bar-track">
+                        <div class="res-bar-fill"></div>
+                    </div>
+                </div>
+                <div class="resource-pill" data-resource="military">
+                    <span class="res-icon">⚔️</span>
+                    <div class="res-bar-track">
+                        <div class="res-bar-fill"></div>
+                    </div>
+                </div>
+                <div class="resource-pill" data-resource="wealth">
+                    <span class="res-icon">💰</span>
+                    <div class="res-bar-track">
+                        <div class="res-bar-fill"></div>
+                    </div>
+                </div>
+                <div class="resource-pill" data-resource="reputation">
+                    <span class="res-icon">📜</span>
+                    <div class="res-bar-track">
+                        <div class="res-bar-fill"></div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- 中央主舞台 -->
+            <main id="main-stage">
+                <!-- 弹幕层 -->
+                <div id="danmaku-container"></div>
+
+                <!-- 事件卡片交互区 -->
+                <div id="event-area">
+                    <div id="card-container">
+                        <div id="event-card" class="card">
+                            <div class="card-header">
+                                <div class="card-character">👤</div>
+                                <h2 class="card-title">载入中...</h2>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-description">正在快马传书...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 选项按钮组 -->
+                    <div id="choices-container">
+                        <button id="choice-left" class="choice-btn left">
+                            <div class="btn-content">
+                                <span class="choice-text">-</span>
+                                <span class="choice-preview"></span>
+                            </div>
+                            <span class="key-hint">A</span>
+                        </button>
+                        <button id="choice-neutral" class="choice-btn neutral">
+                            <div class="btn-content">
+                                <span class="choice-text">-</span>
+                                <span class="choice-preview"></span>
+                            </div>
+                            <span class="key-hint">W</span>
+                        </button>
+                        <button id="choice-right" class="choice-btn right">
+                            <div class="btn-content">
+                                <span class="choice-text">-</span>
+                                <span class="choice-preview"></span>
+                            </div>
+                            <span class="key-hint">D</span>
+                        </button>
+                    </div>
+
+                    <!-- 反馈层 -->
+                    <div id="feedback-overlay" class="hidden">
+                        <div id="feedback-content">
+                            <div id="feedback-text"></div>
+                            <div id="feedback-changes"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- 右侧边栏/弹出层：建筑列表 -->
+            <aside id="right-sidebar">
+                <button id="close-build-btn" class="close-btn">×</button>
+                <div id="building-panel">
+                    <h3>🏘️ 城镇建筑</h3>
+                    <div id="town-summary-compact">
+                        <span>👥 人口: <strong id="population-display">50/100</strong></span>
+                    </div>
+                    <div id="construction-status">
+                        <!-- 动态显示建造进度 -->
+                    </div>
+                    <div id="building-list">
+                        <!-- JS 动态生成 -->
+                    </div>
+                </div>
+            </aside>
+
+        </div> <!-- 结束 game-screen -->
+
+        <!-- 调试数据浮层 (点年份3次开启) -->
+        <div id="debug-overlay"
+            style="display:none; position:fixed; top:80px; left:10px; background:rgba(0,0,0,0.85); color:var(--accent-gold); font-family:monospace; padding:10px 15px; z-index:9999; pointer-events:none; font-size:12px; white-space:pre; border-radius:8px; border:1px solid #555; text-shadow:none;">
+        </div>
+
+        <!-- 通用 Tooltip 提示层 (适用于手机点击展示资源信息) -->
+        <div id="tooltip-overlay">
+            <div class="tooltip-box">
+                <h3 id="tooltip-title">资源名称</h3>
+                <p id="tooltip-desc">描述内容</p>
+                <div class="tooltip-hint">点击任意处关闭</div>
+            </div>
+        </div>
+
+        <div id="game-over" class="hidden">
+            <div class="game-over-content">
+                <div id="ending-portrait-container">
+                    <img id="ending-portrait" src="" alt="Ending Portrait">
+                </div>
+                <div class="ending-text">
+                    <h1>尘埃落定</h1>
+                    <p id="game-over-reason-title" class="ending-reason-title">失败原因：</p>
+                    <p id="game-over-reason" class="ending-reason-detail"></p>
+                    <p id="game-over-turns" class="ending-stats"></p>
+                    <button id="restart-btn">重整旗鼓</button>
+                </div>
+            </div>
+        </div>
+        <script src="events.js?v=4.7"></script>
+        <script src="game.js?v=4.7"></script>
+        <script src="town.js?v=4.7"></script>
+        <script src="ui.js?v=4.7"></script>
+</body>
+
+</html>
