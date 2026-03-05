@@ -7,6 +7,42 @@
  * 4. 建筑列表与聊天日志渲染
  */
 
+// 简易 Web Audio API 音效系统
+const SoundSys = {
+    ctx: null,
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    },
+    playTone(freq, type, duration, vol = 0.1) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    },
+    click() { this.playTone(600, 'sine', 0.1, 0.1); },
+    slide() { this.playTone(400, 'sine', 0.1, 0.1); },
+    good() {
+        this.playTone(523.25, 'sine', 0.1, 0.1); // C5
+        setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.1), 100);
+    },
+    bad() {
+        this.playTone(300, 'triangle', 0.2, 0.15);
+        setTimeout(() => this.playTone(250, 'triangle', 0.3, 0.15), 150);
+    }
+};
+
+// UI 全局对象，管理 DOM 元素缓存
 const DOM = {
     // 容器
     introScreen: document.getElementById('intro-screen'),
@@ -88,8 +124,8 @@ let _prevBuildings = null;
 let _upgradedKeys = new Set(); // 本轮刚升级的建筑 key
 
 window._userInteracted = false;
-document.addEventListener('touchstart', () => { window._userInteracted = true; }, { once: true });
-document.addEventListener('click', () => { window._userInteracted = true; }, { once: true });
+document.addEventListener('touchstart', () => { window._userInteracted = true; SoundSys.init(); }, { once: true });
+document.addEventListener('click', () => { window._userInteracted = true; SoundSys.init(); }, { once: true });
 
 // 安全调用 vibrate
 function safeVibrate(ms) {
@@ -488,6 +524,27 @@ function getCharacterIcon(charName) {
     return map[charName] || '👤';
 }
 
+function getEffectIcons(option) {
+    const icons = {
+        morale: '👥',
+        food: '🌾',
+        military: '⚔️',
+        wealth: '💰',
+        reputation: '📜'
+    };
+    const affected = new Set();
+
+    if (option.effects) Object.keys(option.effects).forEach(k => affected.add(k));
+    if (option.outcomes) {
+        option.outcomes.forEach(out => {
+            if (out.effects) Object.keys(out.effects).forEach(k => affected.add(k));
+        });
+    }
+
+    let res = Array.from(affected).map(k => icons[k]).join('');
+    return res ? `影响: ${res}` : '影响: 无';
+}
+
 function setupButton(side, option) {
     const btn = DOM.buttons[side];
     if (!option) {
@@ -502,8 +559,8 @@ function setupButton(side, option) {
     btn.disabled = false;
     btn.querySelector('.choice-text').textContent = option.text;
 
-    // 预览文本与概率提示
-    let preview = option.preview || '???';
+    // 仅提示会影响的属性，不提供具体数值和增减
+    let preview = getEffectIcons(option);
     if (option.probHint) {
         preview = `${option.probHint} | ${preview}`;
     }
@@ -533,6 +590,9 @@ function handleInput(choice) {
     isProcessing = true;
     setButtonsEnabled(false);
 
+    // UI Sound
+    SoundSys.slide();
+
     // 播放动画
     DOM.card.classList.add(`swipe-${choice === 'left' ? 'left' : choice === 'right' ? 'right' : 'up'}`);
 
@@ -553,11 +613,23 @@ function handleInput(choice) {
     updateUI();
 
     // 资源变化通过图标闪烁反馈 (代替弹幕)
+    let isPositive = false;
+    let isNegative = false;
+
     if (result.effects) {
         for (const [k, v] of Object.entries(result.effects)) {
-            if (v !== 0) flashResource(k, v);
+            if (v !== 0) {
+                flashResource(k, v);
+                if (v > 0) isPositive = true;
+                if (v < 0) isNegative = true;
+            }
         }
     }
+
+    // 根据结果播放简单的正向或负向音效
+    if (isNegative && !isPositive) SoundSys.bad();
+    else if (isPositive) SoundSys.good();
+    else SoundSys.click();
 
     // 延迟 500ms 显示 NPC 反馈 (使用真实结果)
     setTimeout(() => {
