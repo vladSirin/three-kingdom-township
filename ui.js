@@ -158,8 +158,8 @@ window.renderChatLog = function (log) {
     el.innerText = textContent;
 
     // 随机初始位置和轨迹
-    // 限制在屏幕上半部 10% - 50% 的区域随机出现，避免遮挡底部的选项按钮
-    const topPercent = 10 + Math.random() * 40;
+    // 限制在屏幕顶部 5% - 25% 的区域，避免遮挡中部的卡片描述文本和底部的选项按钮
+    const topPercent = 5 + Math.random() * 20;
     el.style.top = `${topPercent}%`;
 
     // 随机持续时间 —— 文字越长速度越慢
