@@ -57,8 +57,11 @@ const GameState = {
     eventQueue: [],
     currentEvent: null,
 
-    // 临时状态效果
-    activeStatuses: [],  // [{id: 'building_market', duration: 2, effects: {...}}]
+    // 临时与环境状态
+    activeStates: [],  // [{id: 'plague', duration: 4}]
+
+    // 主公特质 (永久标签)
+    traits: [], // ['benevolent', 'tyrant']
 
     // 概率修正器 (用于影响随机结果)
     modifiers: {
@@ -123,6 +126,87 @@ const GAME_OVER_REASONS = {
     wealth_high: '【贪得无厌】由于财富外露且横征暴敛，不仅部众离心，连路过的商会都受命刺杀了你这个贪婪的统治者。',
     reputation_low: '【众叛亲离】世人早已将你遗忘，连最忠诚的亲信也在无声无息中离去。你沦为弃子，孤独地消失在历史尘埃中。',
     reputation_high: '【功高震主】你的美名甚至让邺城的曹操感到不安。一杯毒酒，断送了你的英名，也断送了小镇的未来。'
+};
+
+// ============================================
+// 全局修饰器与特质系统 (Effect System)
+// ============================================
+
+// 状态字典定义
+const STATES_DICT = {
+    'starving': {
+        name: '饥荒',
+        modifiers: { pop_growth_flat: -2, morale_change_flat: -5, event_prob_starving: 200 }
+    },
+    'fat_sheep': {
+        name: '待宰肥羊',
+        modifiers: { event_prob_robbery: 300 }
+    },
+    'peaceful': {
+        name: '安居乐业',
+        modifiers: { pop_growth_flat: 2, event_prob_talent: 50 }
+    }
+};
+
+// 特质字典定义
+const TRAITS_DICT = {
+    'benevolent': {
+        name: '仁义',
+        modifiers: { reputation_change_flat: 2, wealth_production_mult: -0.1 }
+    },
+    'tyrant': {
+        name: '暴虐',
+        modifiers: { rebellion_threshold_flat: -20, event_prob_ambitious_hero: 50, event_prob_good_hero: -100 }
+    }
+};
+
+const EffectSystem = {
+    getBaseModifiers() {
+        return {
+            food_production_mult: 1.0,
+            food_consumption_mult: 1.0,
+            wealth_production_mult: 1.0,
+            military_power_mult: 1.0,
+            pop_growth_flat: 0,
+            morale_change_flat: 0,
+            reputation_change_flat: 0,
+            event_probs: {} // 动态事件权重调整
+        };
+    },
+
+    calcModifiers() {
+        const mods = this.getBaseModifiers();
+
+        // 1. 特质 Buff
+        GameState.traits.forEach(traitId => {
+            const def = TRAITS_DICT[traitId];
+            if (def && def.modifiers) this._apply(mods, def.modifiers);
+        });
+
+        // 2. 状态 Buff
+        GameState.activeStates.forEach(state => {
+            const def = STATES_DICT[state.id];
+            if (def && def.modifiers) this._apply(mods, def.modifiers);
+            // 也支持 state 直接带 effects (兼容旧逻辑)
+            if (state.effects) this._apply(mods, state.effects);
+        });
+
+        return mods;
+    },
+
+    _apply(target, source) {
+        for (const [k, v] of Object.entries(source)) {
+            if (typeof target[k] === 'number') {
+                target[k] += v;
+            } else if (typeof target[k] === 'object') {
+                for (const [subK, subV] of Object.entries(v)) {
+                    target[k][subK] = (target[k][subK] || 0) + subV;
+                }
+            } else {
+                target[k] = v;
+            }
+        }
+    }
 };
 
 // ============================================
@@ -224,10 +308,20 @@ function processConstructions() {
 // ============================================
 
 function endOfSeason() {
-    GameState.activeStatuses = GameState.activeStatuses.filter(s => {
+    // 状态持续时间减少
+    GameState.activeStates = GameState.activeStates.filter(s => {
         s.duration--;
+        if (s.duration === 0) {
+            if (window.showToast && STATES_DICT && STATES_DICT[s.id]) {
+                window.showToast(`【状态解除】${STATES_DICT[s.id].name} 已消散。`, 'neutral');
+            }
+        }
         return s.duration > 0;
     });
+
+    // 环境隐性状态检测 (Environment-triggered States)
+    checkEnvironmentStates();
+
     const completed = processConstructions();
     const income = applyBuildingIncome();
 
@@ -262,23 +356,69 @@ function endOfSeason() {
 function applyBuildingIncome() {
     const b = GameState.buildings;
     const pop = GameState.population;
+    const mods = EffectSystem.calcModifiers();
     let income = { food: 0, wealth: 0 };
 
     // 农田产粮 (受人口规模正向影响)
     if (b.farm > 0) {
-        const farmIncome = Math.floor(b.farm * (pop / 20));
+        let farmIncome = b.farm * (pop / 20);
+        farmIncome *= mods.food_production_mult;
+        farmIncome = Math.floor(farmIncome);
         modifyResource('food', farmIncome);
         income.food = farmIncome;
     }
 
     // 市场生财 (人口基数影响税收活跃度)
     if (b.market > 0) {
-        const marketIncome = Math.floor(b.market * (pop / 40));
+        let marketIncome = b.market * (pop / 40);
+        marketIncome *= mods.wealth_production_mult;
+        marketIncome = Math.floor(marketIncome);
         modifyResource('wealth', marketIncome);
         income.wealth = marketIncome;
     }
 
+    // 应用其他被动改变 (如声望、民心的自然增减)
+    if (mods.morale_change_flat !== 0) modifyResource('morale', mods.morale_change_flat);
+    if (mods.reputation_change_flat !== 0) modifyResource('reputation', mods.reputation_change_flat);
+
+    // 人口被动增长 (如瘟疫或安居乐业)
+    if (mods.pop_growth_flat !== 0) {
+        GameState.population = Math.max(0, GameState.population + mods.pop_growth_flat);
+    }
+
     return income;
+}
+
+// 隐性环境状态检测 (取代直接 GameOver，给予施展空间)
+function checkEnvironmentStates() {
+    const r = GameState.resources;
+
+    // 检测饥荒
+    if (r.food < 10 && GameState.population > 20) {
+        addActiveState('starving', 2);
+    }
+
+    // 检测待宰肥羊
+    if (r.wealth > 60 && r.military < 30) {
+        addActiveState('fat_sheep', 2);
+    }
+
+    // 检测安居乐业
+    if (r.morale > 80 && r.food > 50) {
+        addActiveState('peaceful', 2);
+    }
+}
+
+function addActiveState(id, duration) {
+    const existing = GameState.activeStates.find(s => s.id === id);
+    if (existing) {
+        existing.duration = Math.max(existing.duration, duration); // 刷新持续时间
+    } else {
+        GameState.activeStates.push({ id, duration });
+        if (window.showToast && STATES_DICT && STATES_DICT[id]) {
+            window.showToast(`⚠️ 触发状态：【${STATES_DICT[id].name}】持续 ${duration} 季`, 'negative');
+        }
+    }
 }
 
 // ============================================
@@ -593,7 +733,8 @@ function getGameStateForUI() {
         population: GameState.population,
         populationCap: getPopulationCap(),
         constructions: GameState.constructions,
-        activeStatuses: GameState.activeStatuses,
+        activeStates: GameState.activeStates,
+        traits: GameState.traits,
         year: GameState.year,
         season: GameState.season,
         turn: GameState.turn,
@@ -636,7 +777,6 @@ function getSeasonName() {
     return ['春', '夏', '秋', '冬'][idx];
 }
 
-// 导出
 window.Game = {
     start: startNewGame,
     choose: handleChoice,
@@ -646,6 +786,11 @@ window.Game = {
     getYearName,
     getSeasonName,
     getPopulationCap,
+    addActiveState,
+    addTrait: (id) => { if (!GameState.traits.includes(id)) GameState.traits.push(id); },
+    hasTrait: (id) => GameState.traits.includes(id),
+    STATES_DICT,
+    TRAITS_DICT,
     RESOURCE_NAMES,
     RESOURCE_ICONS,
     BUILDING_NAMES,

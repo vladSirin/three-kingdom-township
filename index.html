@@ -7,7 +7,7 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>三国小镇 | Three Kingdoms Township</title>
-    <link rel="stylesheet" href="style.css?v=4.10">
+    <link rel="stylesheet" href="style.css?v=4.12">
 </head>
 
 <body>
@@ -41,13 +41,17 @@
         <!-- 游戏主界面 (1920x1080 布局 / 竖屏适配) -->
         <div id="game-screen" class="hidden">
 
-            <!-- 顶部 HUD：左侧年代，中右侧资源，极右侧建筑按钮 -->
+            <!-- 顶部 HUD：左侧年代，中右侧资源，极右侧按钮 -->
             <header id="hud-top">
                 <div id="era-display-top">
                     <span id="era-year">中平元年</span> <span id="era-season">春</span>
                 </div>
-                <!-- 建筑入口小图标 -->
-                <button id="mobile-build-btn" class="icon-btn">🏠</button>
+                <div class="hud-right-actions">
+                    <!-- 个人特质与家族按钮 -->
+                    <button id="profile-btn" class="icon-btn">👤</button>
+                    <!-- 建筑入口小图标 -->
+                    <button id="mobile-build-btn" class="icon-btn">🏠</button>
+                </div>
             </header>
 
             <!-- 资源水平栏 -->
@@ -157,6 +161,30 @@
 
         </div> <!-- 结束 game-screen -->
 
+        <!-- 主公档案 Modal -->
+        <div id="profile-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <button class="close-btn" id="close-profile-btn">×</button>
+                <h2>主公档案</h2>
+                <div class="profile-section">
+                    <h3>个人特质 (Traits)</h3>
+                    <ul id="traits-list" class="traits-grid">
+                        <!-- 动态注入特质 -->
+                    </ul>
+                    <p class="profile-hint">* 你的抉择塑造了这些特质。它们正潜移默化地影响着天下人对你的态度。</p>
+                </div>
+                <div class="profile-section" style="margin-top: 20px;">
+                    <h3>家族与子嗣 (Family)</h3>
+                    <ul class="family-list">
+                        <li class="empty-list-hint">暂无记录（待开放）</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 临时状态与全局播报 Toast 容器 -->
+        <div id="toast-container"></div>
+
         <!-- 调试数据浮层 (点年份3次开启) -->
         <div id="debug-overlay"
             style="display:none; position:fixed; top:80px; left:10px; background:rgba(0,0,0,0.85); color:var(--accent-gold); font-family:monospace; padding:10px 15px; z-index:9999; pointer-events:none; font-size:12px; white-space:pre; border-radius:8px; border:1px solid #555; text-shadow:none;">
@@ -185,10 +213,10 @@
                 </div>
             </div>
         </div>
-        <script src="events.js?v=4.11"></script>
-        <script src="game.js?v=4.11"></script>
-        <script src="town.js?v=4.11"></script>
-        <script src="ui.js?v=4.11"></script>
+        <script src="events.js?v=4.12"></script>
+        <script src="game.js?v=4.12"></script>
+        <script src="town.js?v=4.12"></script>
+        <script src="ui.js?v=4.12"></script>
 </body>
 
 </html>

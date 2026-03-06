@@ -65,6 +65,13 @@ const DOM = {
     },
     buildingList: document.getElementById('building-list'),
 
+    // 个人与家族特性
+    profileBtn: document.getElementById('profile-btn'),
+    profileModal: document.getElementById('profile-modal'),
+    closeProfileBtn: document.getElementById('close-profile-btn'),
+    traitsList: document.getElementById('traits-list'),
+    toastContainer: document.getElementById('toast-container'),
+
     // 中控台 (Hub) -> 改为弹幕层
     danmakuContainer: document.getElementById('danmaku-container'),
     constructionStatus: document.getElementById('construction-status'),
@@ -178,6 +185,29 @@ window.renderChatLog = function (log) {
     }, duration * 1000);
 };
 
+// UI 浮窗 (Toast) - 用于状态变化
+window.showToast = function (message, type = '') {
+    if (!DOM.toastContainer) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerText = message;
+
+    // 播放提示音 (可根据类型播放不同声音)
+    if (type === 'positive') SoundSys.good();
+    else if (type === 'neutral') SoundSys.slide();
+    else SoundSys.bad();
+
+    DOM.toastContainer.appendChild(toast);
+
+    // 3秒后移除
+    setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 300); // 移除动画时长
+    }, 3000);
+};
+
 // ============================================
 // 初始化
 // ============================================
@@ -203,6 +233,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn && sidebar) {
         closeBtn.addEventListener('click', () => {
             sidebar.classList.remove('mobile-visible');
+        });
+    }
+
+    // 个人面板交互
+    if (DOM.profileBtn && DOM.profileModal) {
+        DOM.profileBtn.addEventListener('click', () => {
+            DOM.profileModal.classList.remove('hidden');
+            SoundSys.slide();
+        });
+    }
+    if (DOM.closeProfileBtn && DOM.profileModal) {
+        DOM.closeProfileBtn.addEventListener('click', () => {
+            DOM.profileModal.classList.add('hidden');
+            SoundSys.slide();
         });
     }
 
@@ -290,6 +334,27 @@ function updateUI() {
     // 1. 三国纪年
     DOM.eraYear.textContent = Game.getYearName();
     DOM.eraSeason.textContent = Game.getSeasonName();
+
+    // 更新特质列表 (Profile View)
+    if (DOM.traitsList) {
+        DOM.traitsList.innerHTML = '';
+        if (!state.traits || state.traits.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'empty-list-hint';
+            li.innerText = '暂无明显特质';
+            DOM.traitsList.appendChild(li);
+        } else {
+            state.traits.forEach(traitId => {
+                const traitDef = Game.TRAITS_DICT ? Game.TRAITS_DICT[traitId] : null;
+                if (traitDef) {
+                    const li = document.createElement('li');
+                    li.className = `trait-tag ${traitId}`;
+                    li.innerText = traitDef.name; // 仅渲染名字标签
+                    DOM.traitsList.appendChild(li);
+                }
+            });
+        }
+    }
 
     // 2. 资源更新
     updateResources(state);
