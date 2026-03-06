@@ -13,7 +13,7 @@
 - [x] **State System (Active States):** Hidden state triggers (e.g. `starving`, `fat_sheep`) altering event probabilities.
 - [x] **Trait System:** Permanent leader traits (`benevolent`, `tyrant`) unlocking / influencing options.
 - [x] **Interconnected Events:** Events affecting subsequent card decks (e.g., poor construction causes dangerous buildings).
-- [ ] **Expanded UI Feedback:** Highlight specific traits in player profile, add visual/haptic warnings for statuses.
+- [x] **Expanded UI Feedback:** Highlight specific traits in player profile, add visual/haptic warnings for statuses.
 
 ## 📌 Phase 3: World Map & Factions (Upcoming)
 - [ ] **Geographical Awareness:** A minimal representation of surrounding towns/factions.

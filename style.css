@@ -909,12 +909,72 @@ button#restart-btn:active {
    警告与震动特效
    ============================================ */
 .screen-shake {
-    animation: screenShake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    animation: screenShake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
 
 @keyframes screenShake {
-    10%, 90% { transform: translate3d(-2px, 1px, 0); }
-    20%, 80% { transform: translate3d(4px, -1px, 0); }
-    30%, 50%, 70% { transform: translate3d(-8px, 2px, 0); }
-    40%, 60% { transform: translate3d(8px, -2px, 0); }
+
+    10%,
+    90% {
+        transform: translate3d(-2px, 1px, 0);
+    }
+
+    20%,
+    80% {
+        transform: translate3d(4px, -1px, 0);
+    }
+
+    30%,
+    50%,
+    70% {
+        transform: translate3d(-8px, 2px, 0);
+    }
+
+    40%,
+    60% {
+        transform: translate3d(8px, -2px, 0);
+    }
+}
+
+/* ============================================
+   致命危机UI特效
+   ============================================ */
+.crisis-warning {
+    animation: crisisAlert 1s infinite alternate;
+    box-shadow: 0 0 15px rgba(248, 113, 113, 0.8) inset, 0 0 15px rgba(248, 113, 113, 0.6);
+    border: 1px solid var(--accent-red);
+}
+
+@keyframes crisisAlert {
+    0% {
+        box-shadow: 0 0 5px rgba(248, 113, 113, 0.5) inset;
+        border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    100% {
+        box-shadow: 0 0 25px rgba(248, 113, 113, 0.9) inset, 0 0 20px rgba(248, 113, 113, 0.8);
+        border-color: var(--accent-red);
+    }
+}
+
+/* ============================================
+   打字机光标特效 (Game Over)
+   ============================================ */
+.typewriter-cursor::after {
+    content: '█';
+    animation: blinkCursor 0.8s step-end infinite;
+    color: var(--accent-gold);
+    margin-left: 5px;
+}
+
+@keyframes blinkCursor {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
 }

@@ -453,6 +453,14 @@ function updateResources(state) {
                 fillEl.style.animation = 'none';
             }
         }
+
+        // 致命危机特效检测 (软Game Over警告闪烁)
+        const hasCrisis = state.activeStates.some(s => s.id === `crisis_${key}_low` || s.id === `crisis_${key}_high`);
+        if (hasCrisis) {
+            element.classList.add('crisis-warning');
+        } else {
+            element.classList.remove('crisis-warning');
+        }
     }
 }
 
@@ -786,8 +794,28 @@ function showGameOver(state) {
         portrait.src = './game_over_failure.png';
     }
 
-    DOM.gameOverReason.textContent = state.gameOverReason;
     DOM.gameOverTurns.textContent = `在位时间：${state.year - 184}年 ${state.turn} 回合`;
+    DOM.gameOverReason.textContent = ''; // 初始化置空
 
     if (window.Town) Town.stop();
+
+    // 史诗感打字机特效输出
+    const fullText = state.gameOverReason;
+    let index = 0;
+    DOM.gameOverReason.classList.add('typewriter-cursor');
+
+    function typeChar() {
+        if (index < fullText.length) {
+            DOM.gameOverReason.textContent += fullText.charAt(index);
+            index++;
+            // 可以稍微加一点随机的停顿感
+            const delay = fullText.charAt(index) === '。' || fullText.charAt(index) === '\n' ? 300 : 40 + Math.random() * 20;
+            setTimeout(typeChar, delay);
+        } else {
+            DOM.gameOverReason.classList.remove('typewriter-cursor');
+        }
+    }
+
+    // 延迟 500ms 后开始打字效果，渲染情绪氛围
+    setTimeout(typeChar, 500);
 }
