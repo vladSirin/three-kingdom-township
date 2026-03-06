@@ -199,9 +199,8 @@ const EVENTS = [
         right: {
             text: '攻打邻县',
             preview: '穷武豪夺',
-            effects: { military: -20, wealth: 30, food: 25, population: -10, morale: -5 },
-            outcome: '你率军屠掠了邻近的村县！满载而归的背后是累累白骨，天下人视你如豺狼。',
-            addTrait: 'tyrant'
+            effects: { military: -20, wealth: 30, food: 25, population: -10, morale: -5, alignment: -30 },
+            outcome: '你率军屠掠了邻近的村县！满载而归的背后是累累白骨，天下人视你如豺狼。（倾向大跌）'
         }
     },
 
@@ -655,10 +654,9 @@ const EVENTS = [
         },
         right: {
             text: '开仓散财',
-            preview: '触发(仁义)',
-            effects: { food: -25, wealth: -20, reputation: 25, morale: 20 },
-            outcome: '你为了拯救生民倾尽府库！百姓在雪地中向你叩首，称呼你为“活菩萨”。此后，你的仁义之名传遍天下！\n\n【获得特质：仁义】',
-            addTrait: 'benevolent'
+            preview: '大仁大义',
+            effects: { food: -25, wealth: -20, reputation: 25, morale: 20, alignment: 50 },
+            outcome: '你为了拯救生民倾尽府库！百姓在雪地中向你叩首，称呼你为“活菩萨”。此后，你的仁惠之名传遍天下！\n\n【倾向升至：仁义】'
         }
     },
     {
@@ -681,10 +679,9 @@ const EVENTS = [
         },
         right: {
             text: '血腥屠村',
-            preview: '触发(暴虐)',
-            effects: { population: -20, military: -5, wealth: 15, morale: -25, reputation: -20 },
-            outcome: '你下达了“杀一儆百”的冷血指令。村庄化为焦土，全镇噤若寒蝉，背后皆称你为暴君。\n\n【获得特质：暴虐】',
-            addTrait: 'tyrant'
+            preview: '残暴镇压',
+            effects: { population: -20, military: -5, wealth: 15, morale: -25, reputation: -20, alignment: -50 },
+            outcome: '你下达了“杀一儆百”的冷血指令。村庄化为焦土，全镇噤若寒蝉，背后皆称你为暴君。\n\n【倾向跌至：暴虐】'
         }
     },
 
@@ -748,10 +745,94 @@ const EVENTS = [
             outcome: '大贤倾囊相授。不仅改良了农商之法，还为你赢得了极高的天下清名。'
         },
         right: {
-            text: '请治军防',
-            preview: '转文为武',
-            effects: { military: 20, reputation: 5 },
-            outcome: '名士亦通兵法！他重新布置了城防体系，练兵之法大幅提升了军容。'
+            text: '封为客卿',
+            preview: '重用',
+            effects: { wealth: -20, reputation: 25, military: 15 },
+            outcome: '你以重金厚禄聘其为军师。在他的谋划下，城镇防务和声望都得到了飞跃。'
+        }
+    },
+
+    // ============================================
+    // 倾向光谱专属卡组 (Alignment Exclusive)
+    // ============================================
+    {
+        id: 'hero_arrives',
+        title: '英雄来投',
+        character: '豪杰',
+        description: '听闻主公宽仁厚德，一位手持丈八蛇矛、威风凛凛的豪杰特来投效，愿为主公前驱！',
+        condition: { minAlignment: 50 },
+        weight: 25,
+        left: {
+            text: '委以重任',
+            preview: '得遇明主',
+            effects: { military: 30, morale: 15, food: -5 },
+            outcome: '好汉感动涕零：“遇明主，敢不效死力！”全军士气大震，武库充实。'
+        },
+        right: {
+            text: '结拜兄弟',
+            preview: '生死之交',
+            effects: { reputation: 20, morale: 20, military: 20, wealth: -10 },
+            outcome: '你与他在桃园结为异姓兄弟！感人肺腑的情谊传为佳话。'
+        }
+    },
+    {
+        id: 'benevolent_charity',
+        title: '乐善好施',
+        character: '老丈',
+        description: '远方受灾的百姓慕名而来，匍匐在府衙门前，祈求得到你这位“活菩萨”的施舍。',
+        condition: { minAlignment: 50 },
+        weight: 15,
+        left: {
+            text: '闭门谢客',
+            preview: '声名略损',
+            effects: { reputation: -5, alignment: -5 },
+            outcome: '虽然你也有难处，但门外的叹息声还是让你的仁厚之名打了些折扣。'
+        },
+        right: {
+            text: '有求必应',
+            preview: '损财济民',
+            effects: { food: -15, wealth: -5, reputation: 10, alignment: 5 },
+            outcome: '你慷慨解囊，灾民们千恩万谢地离去，你的声名更加稳固。'
+        }
+    },
+    {
+        id: 'assassination_attempt',
+        title: '夜半惊醒',
+        character: '死士',
+        description: '你平日的暴虐终于惹来杀机！夜半时分，几名蒙面死士潜入你的卧房，寒光闪烁直逼咽喉！',
+        condition: { maxAlignment: -50 },
+        weight: 30,
+        left: {
+            text: '惊险呼救',
+            preview: '重伤求存',
+            effects: { military: -15, morale: -15, reputation: -10 },
+            outcome: '亲卫拼死护卫才将刺客斩杀，但你亦受重创，整个府衙风声鹤唳。'
+        },
+        right: {
+            text: '斩尽杀绝',
+            preview: '血色清洗',
+            effects: { military: -5, wealth: 15, population: -10, alignment: -10 },
+            outcome: '你早有防备，设下埋伏！不仅把刺客诛杀，还连夜抄了幕后主使的家，小镇沉浸在血雨腥风中。'
+        }
+    },
+    {
+        id: 'forced_conscription',
+        title: '强拉壮丁',
+        character: '军官',
+        description: '兵役繁重，但在你的严酷统治下，军官建议今夜入村突击，将所有青壮男子强行抓入军营。',
+        condition: { maxAlignment: -50 },
+        weight: 20,
+        left: {
+            text: '不理会',
+            preview: '难得宽许',
+            effects: { morale: 5, alignment: 5 },
+            outcome: '你破天荒地驳回了建议。百姓对你少了一分憎恶。'
+        },
+        right: {
+            text: '鸡犬不宁',
+            preview: '强军损民',
+            effects: { military: 25, population: -15, morale: -20, alignment: -10 },
+            outcome: '半夜的村庄哭号震天，士兵暴力踹门拉人。你的军队因此壮大，但愤怒已埋下火种。'
         }
     },
     {

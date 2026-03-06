@@ -60,8 +60,8 @@ const GameState = {
     // 临时与环境状态
     activeStates: [],  // [{id: 'plague', duration: 4}]
 
-    // 主公特质 (永久标签)
-    traits: [], // ['benevolent', 'tyrant']
+    // 主公倾向光谱 [-100, 100]
+    alignment: 0,
 
     // 概率修正器 (用于影响随机结果)
     modifiers: {
@@ -160,17 +160,18 @@ const STATES_DICT = {
     'crisis_food_high': { name: '囤积招患', modifiers: {} }
 };
 
-// 特质字典定义
-const TRAITS_DICT = {
-    'benevolent': {
-        name: '仁义',
-        modifiers: { reputation_change_flat: 2, wealth_production_mult: -0.1 }
-    },
-    'tyrant': {
-        name: '暴虐',
-        modifiers: { rebellion_threshold_flat: -20, event_prob_ambitious_hero: 50, event_prob_good_hero: -100 }
-    }
-};
+// 主公倾向光谱定义
+const ALIGNMENT_STAGES = [
+    { id: 'tyrant', name: '暴虐', min: -100, max: -50, modifiers: { rebellion_threshold_flat: -20, event_prob_ambitious_hero: 50, event_prob_good_hero: -100 } },
+    { id: 'harsh', name: '严酷', min: -49, max: -20, modifiers: { morale_change_flat: -2, military_bonus: 5 } },
+    { id: 'neutral', name: '中庸', min: -19, max: 19, modifiers: {} },
+    { id: 'lenient', name: '宽厚', min: 20, max: 49, modifiers: { morale_change_flat: 2 } },
+    { id: 'benevolent', name: '仁义', min: 50, max: 100, modifiers: { reputation_change_flat: 2, wealth_production_mult: -0.1 } }
+];
+
+function getAlignmentStage() {
+    return ALIGNMENT_STAGES.find(s => GameState.alignment >= s.min && GameState.alignment <= s.max) || ALIGNMENT_STAGES[2];
+}
 
 const EffectSystem = {
     getBaseModifiers() {
@@ -189,11 +190,9 @@ const EffectSystem = {
     calcModifiers() {
         const mods = this.getBaseModifiers();
 
-        // 1. 特质 Buff
-        GameState.traits.forEach(traitId => {
-            const def = TRAITS_DICT[traitId];
-            if (def && def.modifiers) this._apply(mods, def.modifiers);
-        });
+        // 1. 倾向 Buff
+        const stage = getAlignmentStage();
+        if (stage && stage.modifiers) this._apply(mods, stage.modifiers);
 
         // 2. 状态 Buff
         GameState.activeStates.forEach(state => {
@@ -253,14 +252,17 @@ function modifyResource(resource, delta) {
 }
 
 function modifyResources(changes) {
-    for (const [resource, delta] of Object.entries(changes)) {
-        if (delta === 0) continue;
+    if (!changes) return;
+    for (const [k, v] of Object.entries(changes)) {
+        if (v === 0) continue;
 
-        if (resource === 'population') {
+        if (k === 'alignment') {
+            GameState.alignment = Math.max(-100, Math.min(100, GameState.alignment + v));
+        } else if (k === 'population') {
             // 人口允许突破上限 (Overflow)
-            GameState.population = Math.max(0, GameState.population + delta);
-        } else if (GameState.resources[resource] !== undefined) {
-            modifyResource(resource, delta);
+            GameState.population = Math.max(0, GameState.population + v);
+        } else if (GameState.resources[k] !== undefined) {
+            modifyResource(k, v);
         }
     }
 }
@@ -548,8 +550,11 @@ function checkEventCondition(event) {
     if (c.state !== undefined) {
         if (!GameState.activeStates.some(s => s.id === c.state)) return false;
     }
-    if (c.trait !== undefined) {
-        if (!GameState.traits.includes(c.trait)) return false;
+    if (c.minAlignment !== undefined) {
+        if (GameState.alignment < c.minAlignment) return false;
+    }
+    if (c.maxAlignment !== undefined) {
+        if (GameState.alignment > c.maxAlignment) return false;
     }
 
     if (c.isConstructing !== undefined) {
@@ -581,18 +586,13 @@ function handleChoice(choice, autoAdvance = true) {
         modifyResources(choiceData.effects);
     }
 
-    // 3. 开始建造
+    // 开始建造
     if (choiceData.startConstruction) {
         const sc = choiceData.startConstruction;
         startConstruction(sc.building, sc.duration);
     }
 
-    // 处理特质与状态
-    if (choiceData.addTrait) {
-        if (!GameState.traits.includes(choiceData.addTrait)) {
-            GameState.traits.push(choiceData.addTrait);
-        }
-    }
+    // 处理状态
     if (choiceData.addState) {
         addActiveState(choiceData.addState.id, choiceData.addState.duration);
     }
@@ -814,7 +814,8 @@ function getGameStateForUI() {
         populationCap: getPopulationCap(),
         constructions: GameState.constructions,
         activeStates: GameState.activeStates,
-        traits: GameState.traits,
+        alignment: GameState.alignment,
+        traits: GameState.traits, // 保留以防其他地方报错，但废弃
         year: GameState.year,
         season: GameState.season,
         turn: GameState.turn,
@@ -867,10 +868,8 @@ window.Game = {
     getSeasonName,
     getPopulationCap,
     addActiveState,
-    addTrait: (id) => { if (!GameState.traits.includes(id)) GameState.traits.push(id); },
-    hasTrait: (id) => GameState.traits.includes(id),
+    getAlignmentStage,
     STATES_DICT,
-    TRAITS_DICT,
     RESOURCE_NAMES,
     RESOURCE_ICONS,
     BUILDING_NAMES,

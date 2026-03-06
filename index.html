@@ -167,11 +167,20 @@
                 <button class="close-btn" id="close-profile-btn">×</button>
                 <h2>主公档案</h2>
                 <div class="profile-section">
-                    <h3>个人特质 (Traits)</h3>
-                    <ul id="traits-list" class="traits-grid">
-                        <!-- 动态注入特质 -->
-                    </ul>
-                    <p class="profile-hint">* 你的抉择塑造了这些特质。它们正潜移默化地影响着天下人对你的态度。</p>
+                    <h3>主公倾向 (Alignment)</h3>
+                    <div id="alignment-container" class="alignment-container">
+                        <div class="alignment-labels">
+                            <span class="align-tyrant">暴虐</span>
+                            <span class="align-neutral">中庸</span>
+                            <span class="align-benevolent">仁义</span>
+                        </div>
+                        <div class="alignment-track">
+                            <div id="alignment-marker" class="alignment-marker"></div>
+                        </div>
+                        <div id="alignment-status-text" class="alignment-status-text">当前评价：中庸</div>
+                        <div id="alignment-buffs" class="alignment-buffs"></div>
+                    </div>
+                    <p class="profile-hint">* 你的抉择左右着你的倾向(-100到100)。它正潜移默化地影响着天下对你的评价，并可能招致截然不同的事件。</p>
                 </div>
                 <div class="profile-section" style="margin-top: 20px;">
                     <h3>家族与子嗣 (Family)</h3>

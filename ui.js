@@ -341,24 +341,40 @@ function updateUI() {
     DOM.eraYear.textContent = Game.getYearName();
     DOM.eraSeason.textContent = Game.getSeasonName();
 
-    // 更新特质列表 (Profile View)
-    if (DOM.traitsList) {
-        DOM.traitsList.innerHTML = '';
-        if (!state.traits || state.traits.length === 0) {
-            const li = document.createElement('li');
-            li.className = 'empty-list-hint';
-            li.innerText = '暂无明显特质';
-            DOM.traitsList.appendChild(li);
-        } else {
-            state.traits.forEach(traitId => {
-                const traitDef = Game.TRAITS_DICT ? Game.TRAITS_DICT[traitId] : null;
-                if (traitDef) {
-                    const li = document.createElement('li');
-                    li.className = `trait-tag ${traitId}`;
-                    li.innerText = traitDef.name; // 仅渲染名字标签
-                    DOM.traitsList.appendChild(li);
+    // 更新倾向光谱 (Profile View)
+    if (DOM.alignmentMarker && state.alignment !== undefined) {
+        const align = state.alignment;
+        // Map -100 ~ 100 to 0% ~ 100%
+        const percent = Math.max(0, Math.min(100, ((align + 100) / 200) * 100));
+        DOM.alignmentMarker.style.left = `${percent}%`;
+
+        const stage = Game.getAlignmentStage ? Game.getAlignmentStage() : null;
+        if (stage) {
+            DOM.alignmentStatusText.textContent = `当前评价：${stage.name} (${align})`;
+            DOM.alignmentStatusText.className = `alignment-status-text align-${stage.id}`;
+
+            let buffHTML = '';
+            if (stage.modifiers) {
+                for (const [k, v] of Object.entries(stage.modifiers)) {
+                    let sign = v > 0 ? '+' : '';
+                    let title = k;
+                    if (k === 'rebellion_threshold_flat') title = '叛乱阈值';
+                    else if (k === 'event_prob_ambitious_hero') title = '野心家来投率';
+                    else if (k === 'event_prob_good_hero') title = '正面英雄来投率';
+                    else if (k === 'morale_change_flat') title = '季末民心变化';
+                    else if (k === 'reputation_change_flat') title = '季末声望变化';
+                    else if (k === 'military_bonus') title = '军事选择优势';
+                    else if (k === 'wealth_production_mult') title = '商税产出';
+
+                    let valStr = `${sign}${v}`;
+                    if (k.includes('mult')) valStr = `${sign}${v * 100}%`;
+
+                    buffHTML += `<div class="buff-item"><span class="buff-label">${title}</span><span class="buff-val">${valStr}</span></div>`;
                 }
-            });
+            }
+            if (DOM.alignmentBuffs) {
+                DOM.alignmentBuffs.innerHTML = buffHTML ? `<h4>当前被动效果：</h4>${buffHTML}` : '<h4 class="empty-list-hint">当前倾向无额外效果</h4>';
+            }
         }
     }
 
