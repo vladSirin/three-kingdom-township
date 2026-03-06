@@ -145,7 +145,19 @@ const STATES_DICT = {
     'peaceful': {
         name: '安居乐业',
         modifiers: { pop_growth_flat: 2, event_prob_talent: 50 }
-    }
+    },
+    'shoddy_work': {
+        name: '建筑隐患',
+        modifiers: { morale_change_flat: -2, event_prob_hazard: 100 }
+    },
+    // ---- 倒计时危机状态 ----
+    'crisis_food_low': { name: '断粮崩溃', modifiers: { morale_change_flat: -10, pop_growth_flat: -5 } },
+    'crisis_morale_low': { name: '民怨沸腾', modifiers: { pop_growth_flat: -5 } },
+    'crisis_military_low': { name: '武备废弛', modifiers: { reputation_change_flat: -5 } },
+    'crisis_wealth_low': { name: '府库枯竭', modifiers: { morale_change_flat: -5 } },
+    'crisis_reputation_low': { name: '信誉扫地', modifiers: { pop_growth_flat: -5 } },
+    'crisis_wealth_high': { name: '树大招风', modifiers: {} },
+    'crisis_food_high': { name: '囤积招患', modifiers: {} }
 };
 
 // 特质字典定义
@@ -255,15 +267,40 @@ function modifyResources(changes) {
 
 function checkGameOver() {
     for (const [resource, value] of Object.entries(GameState.resources)) {
+        const cap = GameState.resourceCaps[resource] || 100;
+
+        // 1. 低位危机检测 (<= 0)
+        const lowCrisisId = `crisis_${resource}_low`;
         if (value <= 0) {
-            GameState.isGameOver = true;
-            GameState.gameOverReason = GAME_OVER_REASONS[`${resource}_low`];
-            return;
+            if (!GameState.activeStates.find(s => s.id === lowCrisisId)) {
+                addActiveState(lowCrisisId, 3); // 3季倒计时
+                if (window.showToast) window.showToast(`🚨 极危警告：${RESOURCE_NAMES[resource]}已尽，小镇即将在 3 季内面临崩溃！`, 'negative');
+            }
+        } else {
+            // 安全线以上，自动解除低位危机
+            if (value >= 1) { // 如果是财富或武力等，恢复到1点即可解除 (也可设置更高安全线)
+                const stateIndex = GameState.activeStates.findIndex(s => s.id === lowCrisisId);
+                if (stateIndex > -1) {
+                    GameState.activeStates.splice(stateIndex, 1);
+                    if (window.showToast) window.showToast(`✨ 危机解除：${RESOURCE_NAMES[resource]}恢复，危机脱险。`, 'positive');
+                }
+            }
         }
-        if (value >= 100) {
-            GameState.isGameOver = true;
-            GameState.gameOverReason = GAME_OVER_REASONS[`${resource}_high`];
-            return;
+
+        // 2. 高位危机检测 ( >= cap * 0.9)
+        const highCrisisId = `crisis_${resource}_high`;
+        // 不对所有资源生效高位危机，仅针对财、粮等
+        if ((resource === 'wealth' || resource === 'food') && value >= cap * 0.9) {
+            if (!GameState.activeStates.find(s => s.id === highCrisisId)) {
+                addActiveState(highCrisisId, 3);
+                if (window.showToast) window.showToast(`⚠️ 警告：${RESOURCE_NAMES[resource]}囤积过多，恐遭人觊觎！`, 'negative');
+            }
+        } else {
+            const stateIndex = GameState.activeStates.findIndex(s => s.id === highCrisisId);
+            if (stateIndex > -1) {
+                GameState.activeStates.splice(stateIndex, 1);
+                if (window.showToast) window.showToast(`✨ 危机解除：${RESOURCE_NAMES[resource]}消耗，不再惹眼。`, 'positive');
+            }
         }
     }
 }
@@ -308,16 +345,27 @@ function processConstructions() {
 // ============================================
 
 function endOfSeason() {
+    let crisisTerminalReason = null;
+
     // 状态持续时间减少
     GameState.activeStates = GameState.activeStates.filter(s => {
         s.duration--;
         if (s.duration === 0) {
-            if (window.showToast && STATES_DICT && STATES_DICT[s.id]) {
+            if (s.id.startsWith('crisis_')) {
+                crisisTerminalReason = s.id;
+            } else if (window.showToast && STATES_DICT && STATES_DICT[s.id]) {
                 window.showToast(`【状态解除】${STATES_DICT[s.id].name} 已消散。`, 'neutral');
             }
         }
         return s.duration > 0;
     });
+
+    if (crisisTerminalReason) {
+        GameState.isGameOver = true;
+        const reasonKey = crisisTerminalReason.replace('crisis_', ''); // e.g. 'food_low'
+        GameState.gameOverReason = GAME_OVER_REASONS[reasonKey] || '【崩溃】小镇在危局中彻底覆灭。';
+        return [];
+    }
 
     // 环境隐性状态检测 (Environment-triggered States)
     checkEnvironmentStates();
@@ -430,6 +478,17 @@ function initEventQueue() {
 }
 
 function drawNextEvent() {
+    // 1. 强制灾难卡拦截
+    const crisisState = GameState.activeStates.find(s => s.id.startsWith('crisis_'));
+    if (crisisState && window.DISASTER_EVENTS) {
+        const disasterEvent = window.DISASTER_EVENTS.find(e => e.triggerCrisis === crisisState.id);
+        if (disasterEvent && (!GameState.currentEvent || GameState.currentEvent.id !== disasterEvent.id)) {
+            GameState.currentEvent = disasterEvent;
+            return disasterEvent;
+        }
+    }
+
+    // 2. 常规事件池
     if (GameState.eventQueue.length === 0) initEventQueue();
     let event = null;
     while (GameState.eventQueue.length > 0) {
@@ -486,6 +545,13 @@ function checkEventCondition(event) {
         }
     }
 
+    if (c.state !== undefined) {
+        if (!GameState.activeStates.some(s => s.id === c.state)) return false;
+    }
+    if (c.trait !== undefined) {
+        if (!GameState.traits.includes(c.trait)) return false;
+    }
+
     if (c.isConstructing !== undefined) {
         const isBuilding = GameState.constructions.length > 0;
         if (c.isConstructing !== isBuilding) return false;
@@ -519,6 +585,20 @@ function handleChoice(choice, autoAdvance = true) {
     if (choiceData.startConstruction) {
         const sc = choiceData.startConstruction;
         startConstruction(sc.building, sc.duration);
+    }
+
+    // 处理特质与状态
+    if (choiceData.addTrait) {
+        if (!GameState.traits.includes(choiceData.addTrait)) {
+            GameState.traits.push(choiceData.addTrait);
+        }
+    }
+    if (choiceData.addState) {
+        addActiveState(choiceData.addState.id, choiceData.addState.duration);
+    }
+    if (choiceData.removeState) {
+        GameState.activeStates = GameState.activeStates.filter(s => s.id !== choiceData.removeState);
+        if (window.showToast) window.showToast('【状态解除】隐患已被排除。', 'positive');
     }
 
     // 4. 直接升级建筑

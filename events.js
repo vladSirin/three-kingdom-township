@@ -87,10 +87,10 @@ const EVENTS = [
     // 军事事件
     // ============================================
     {
-        id: 'cao_cao_tribute',
-        title: '曹军索贡',
+        id: 'warlord_tribute',
+        title: '诸侯索贡',
         character: '使者',
-        description: '曹操麾下使者带来命令：交纳粮草，否则后果自负。',
+        description: '周边强势诸侯的使者带甲而来：交纳粮草，否则后果自负。',
         left: {
             text: '断然拒绝',
             preview: '开战风险',
@@ -105,21 +105,33 @@ const EVENTS = [
                 {
                     weight: 6,
                     effects: { military: -12, reputation: 5, morale: -5, population: -8 },
-                    outcome: '曹军大怒！数日后边境遭到掠夺，抢走大量财物并掳走人口，损失惨重。'
+                    outcome: '诸侯大怒！数日后边境遭到掠夺，抢走大量财物并掳走人口，损失惨重。'
                 }
             ]
         },
         neutral: {
             text: '讨价还价',
             preview: '妥协但有损',
-            effects: { food: -8, reputation: -3, morale: -5 },
-            outcome: '使者勉强同意减半征收。虽然保住了一些粮食，但属下认为你毫无傲骨。'
+            probHint: '偏吉',
+            outcomes: [
+                {
+                    weight: 5,
+                    modifierTag: 'diplomatic_bonus',
+                    effects: { food: -5, reputation: 2 },
+                    outcome: '因你外交得当，使者同意大幅减免，甚至对你的手腕表示赞赏。'
+                },
+                {
+                    weight: 5,
+                    effects: { food: -10, reputation: -3, morale: -5 },
+                    outcome: '使者勉强同意减免部分。虽然保住了一些粮食，但属下认为你毫无傲骨。'
+                }
+            ]
         },
         right: {
             text: '如数上交',
             preview: '弃财保平安',
-            effects: { food: -18, reputation: -12, wealth: 5 },
-            outcome: '由于你表现十分“顺从”，曹军打赏了你一些金银，但你在天下的声望落至冰点。'
+            effects: { food: -20, reputation: -15, wealth: 5 },
+            outcome: '由于你表现十分“顺从”，使者打赏了你一些金银，但你在天下的声望落至冰点。'
         }
     },
     {
@@ -162,6 +174,34 @@ const EVENTS = [
             preview: '强武损农',
             effects: { military: 15, food: -15, morale: -8, population: -5 },
             outcome: '新兵入伍训练。军容日盛，但沉重的军徭役让民间怨声四起。'
+        }
+    },
+    {
+        id: 'outbound_raid',
+        title: '整军出击',
+        character: '将领',
+        description: '镇中兵强马壮，将领请战外出“借粮”（即劫掠），以充实府库。',
+        condition: { minResourceRatio: { military: 0.8 } },
+        weight: 10,
+        left: {
+            text: '安抚斥退',
+            preview: '求稳保民',
+            effects: { reputation: -2, morale: 5 },
+            outcome: '你安抚了躁动的军队，百姓称赞你的克制。'
+        },
+        neutral: {
+            text: '劫掠商队',
+            preview: '得财险名',
+            effects: { wealth: 15, food: 10, reputation: -15 },
+            outcome: '商队被洗劫一空，你获得了补给，但被州郡列为“强盗”，并且被受害商会盯上。',
+            addState: { id: 'fat_sheep', duration: 3 }
+        },
+        right: {
+            text: '攻打邻县',
+            preview: '穷武豪夺',
+            effects: { military: -20, wealth: 30, food: 25, population: -10, morale: -5 },
+            outcome: '你率军屠掠了邻近的村县！满载而归的背后是累累白骨，天下人视你如豺狼。',
+            addTrait: 'tyrant'
         }
     },
 
@@ -537,9 +577,10 @@ const EVENTS = [
         condition: { isConstructing: true },
         left: {
             text: '睁一只眼',
-            preview: '得利损名',
+            preview: '隐患重重',
             effects: { wealth: 8, reputation: -15, military: -5 },
-            outcome: '你收受了监工的回扣。虽然府库小赚，但由于材料劣质，城防隐患重重。'
+            outcome: '你收受了监工的回扣。不久后，修葺的建筑里传出嘎吱作响的声音。（已添加危险建筑隐患）',
+            addState: { id: 'shoddy_work', duration: 99 } // 持续性隐患
         },
         right: {
             text: '严查严办',
@@ -589,7 +630,321 @@ const EVENTS = [
             effects: { wealth: -10, morale: -5, population: -60 },
             outcome: '你被迫发放路费让流民前往邻近城镇，虽然损失了金钱与人口，但社会动荡暂时平息。'
         }
+    },
+
+    // ============================================
+    // 特质触发事件
+    // ============================================
+    {
+        id: 'refugee_crisis',
+        title: '凛冬灾民',
+        character: '流民',
+        description: '大雪封山，邻郡爆发严重灾荒，无数衣不蔽体的灾民涌入城中，官员请示如何处置。',
+        weight: 15,
+        left: {
+            text: '视而不见',
+            preview: '省财失心',
+            effects: { reputation: -10, morale: -10, wealth: 5 },
+            outcome: '你下令闭门不出，城外冻死饿死者不计其数。虽然省下了开支，但你的冷血让全城胆寒。'
+        },
+        neutral: {
+            text: '设立粥棚',
+            preview: '平庸救济',
+            effects: { food: -10, morale: 5, reputation: 5 },
+            outcome: '几处粥棚勉强维持了最基础的生机，百姓对你的善举表示感谢。'
+        },
+        right: {
+            text: '开仓散财',
+            preview: '触发(仁义)',
+            effects: { food: -25, wealth: -20, reputation: 25, morale: 20 },
+            outcome: '你为了拯救生民倾尽府库！百姓在雪地中向你叩首，称呼你为“活菩萨”。此后，你的仁义之名传遍天下！\n\n【获得特质：仁义】',
+            addTrait: 'benevolent'
+        }
+    },
+    {
+        id: 'tax_riot',
+        title: '抗税暴乱',
+        character: '税吏',
+        description: '城外某村因连年苛捐杂税，聚集抗议，甚至暴力驱逐了收税的官吏。',
+        weight: 15,
+        left: {
+            text: '妥协免税',
+            preview: '失财得心',
+            effects: { wealth: -10, morale: 8, reputation: -5 },
+            outcome: '你选择退让并下达了免税令。虽然府库受损，管治威信下降，但暴乱和平解散。'
+        },
+        neutral: {
+            text: '逮捕首恶',
+            preview: '雷霆手段',
+            effects: { morale: -5, military: -5, wealth: 5 },
+            outcome: '军队出动抓捕了带头抗议的几人，风波暂时平息。'
+        },
+        right: {
+            text: '血腥屠村',
+            preview: '触发(暴虐)',
+            effects: { population: -20, military: -5, wealth: 15, morale: -25, reputation: -20 },
+            outcome: '你下达了“杀一儆百”的冷血指令。村庄化为焦土，全镇噤若寒蝉，背后皆称你为暴君。\n\n【获得特质：暴虐】',
+            addTrait: 'tyrant'
+        }
+    },
+
+    // ============================================
+    // 状态与异常联动专属事件
+    // ============================================
+    {
+        id: 'starving_mutiny',
+        title: '饿殍之怒',
+        character: '暴民',
+        description: '【饥荒爆发】由于长时间饥荒，城中已出现易子而食的惨状，数千饥民失去理智，手持农具冲击府衙库房！',
+        condition: { state: 'starving' },
+        weight: 50,
+        modifierTag: 'event_prob_starving',
+        left: {
+            text: '无粮可救',
+            preview: '等待死亡',
+            effects: { population: -30, morale: -15, reputation: -10 },
+            outcome: '你只能闭门不出，饥民在绝望中互相践踏，甚至抢掠同胞，城中犹如人间地狱。'
+        },
+        right: {
+            text: '武力镇压',
+            preview: '血色同室',
+            effects: { population: -20, military: -10, morale: -20 },
+            outcome: '你下令军队对平民挥起屠刀。暴动被血腥镇压，但你的统治根基已被彻底动摇。'
+        }
+    },
+    {
+        id: 'wolves_at_door',
+        title: '群狼环伺',
+        character: '探子',
+        description: '【肥羊受劫】你富甲一方却武备空虚的消息早已传开，周边数股流贼联合向小镇发起凶猛的夹击！',
+        condition: { state: 'fat_sheep' },
+        weight: 50,
+        modifierTag: 'event_prob_robbery',
+        left: {
+            text: '缴纳岁贡',
+            preview: '屈辱求和',
+            effects: { wealth: -40, reputation: -20, morale: -10 },
+            outcome: '贼首在府衙大堂肆意劫掠调戏，带着满载的马车大笑着离去。你的威严扫地。'
+        },
+        right: {
+            text: '死守城池',
+            preview: '玉石俱焚',
+            effects: { military: -15, wealth: -20, population: -10, morale: 5 },
+            outcome: '军民付出惨烈代价才勉强击退敌人。虽然保住了部分家产，但城镇元气大伤。'
+        }
+    },
+    {
+        id: 'talent_visit',
+        title: '大才登门',
+        character: '名士',
+        description: '【安居触发】听闻主公治下安居乐业，夜不闭户，一位身着鹤氅的名士主动登门拜访，愿效犬马之劳！',
+        condition: { state: 'peaceful' },
+        weight: 15,
+        modifierTag: 'event_prob_talent',
+        left: {
+            text: '虚心受教',
+            preview: '得大贤',
+            effects: { reputation: 15, morale: 10, wealth: 10, food: 10 },
+            outcome: '大贤倾囊相授。不仅改良了农商之法，还为你赢得了极高的天下清名。'
+        },
+        right: {
+            text: '请治军防',
+            preview: '转文为武',
+            effects: { military: 20, reputation: 5 },
+            outcome: '名士亦通兵法！他重新布置了城防体系，练兵之法大幅提升了军容。'
+        }
+    },
+    {
+        id: 'seasonal_plague',
+        title: '换季时疫',
+        character: '医者',
+        description: '季度交替，寒暑不均。城中突发时疫，咳嗽发热者甚众。',
+        weight: 15,
+        left: {
+            text: '听天由命',
+            preview: '省钱死人',
+            effects: { population: -15, morale: -5 },
+            outcome: '官府未加干涉。时疫带走了一批体弱的老幼，城中多了无数白幡。'
+        },
+        neutral: {
+            text: '封锁隔离',
+            preview: '强制维稳',
+            effects: { population: -5, morale: -10, wealth: -5 },
+            outcome: '患病者被强行锁在家中。虽然传播途径被切断，但这种无情的做法引发了强烈的民怨。'
+        },
+        right: {
+            text: '延医送药',
+            preview: '庇护(需医馆)',
+            probHint: '必定成功',
+            condition: { building: 'hospital', minLevel: 1 },
+            effects: { wealth: -10, morale: 10, reputation: 5 },
+            outcome: '多亏了医馆里的大夫们倾力相救！官府报销了部分药费，染病者几乎全部痊愈。'
+        }
+    },
+    {
+        id: 'dangerous_building',
+        title: '隐患告急',
+        character: '工匠',
+        description: '【危险建筑】此前由于材料使用低劣，城中一座重要设施突发险情！如果不加抢修恐怕会引发连锁坍塌。',
+        condition: { state: 'shoddy_work' },
+        weight: 60,
+        left: {
+            text: '听之任之',
+            preview: '听凭天命',
+            effects: { morale: -10, reputation: -5 },
+            outcome: '轰隆一声巨响，建筑轰然坍塌。虽然早作防备，但百姓对你的信任再次大打折扣。（隐患已了）',
+            removeState: 'shoddy_work'
+        },
+        right: {
+            text: '紧急抢修',
+            preview: '耗财补漏',
+            effects: { wealth: -15, food: -5, morale: 5 },
+            outcome: '工匠们日夜赶工，用真材实料重新加固了隐患处。这块心病总算除去了。（隐患已排除）',
+            removeState: 'shoddy_work'
+        }
     }
 ];
 
-console.log('events.js v0.7 加载完成，共', EVENTS.length, '个事件');
+// ============================================
+// 灾难与软着陆事件 (Soft Game Over Interceptors)
+// ============================================
+const DISASTER_EVENTS = [
+    {
+        id: 'disaster_food_low',
+        triggerCrisis: 'crisis_food_low',
+        title: '【危机】饥民暴动',
+        character: '里正',
+        description: '粮草断绝，全城爆发了严重的饥荒，走投无路的灾民正在冲击府衙！若不迅速处理，小镇即将彻底崩溃！',
+        left: {
+            text: '武力弹压',
+            preview: '镇压损威',
+            effects: { military: -10, reputation: -15, morale: -15, population: -20 },
+            outcome: '你下令士兵强行驱散饥民，鲜血染红了街道。暴动暂歇，但饥荒的阴云依然笼罩（危机倒计时继续）。'
+        },
+        right: {
+            text: '高价募粮',
+            preview: '散财救命',
+            effects: { wealth: -25, food: 15 },
+            outcome: '你散尽府库家财，从黑市商贾手中买来一批高价粮。虽然倾家荡产，但至少解了燃眉之急！'
+        }
+    },
+    {
+        id: 'disaster_morale_low',
+        triggerCrisis: 'crisis_morale_low',
+        title: '【危机】揭竿而起',
+        character: '队长',
+        description: '民怨沸腾到了极点，城中百姓竟然自发武装起来，打着“黄天当立”的旗号包围了官署！',
+        left: {
+            text: '血腥镇压',
+            preview: '大伤元气',
+            effects: { military: -15, population: -30, wealth: -5 },
+            outcome: '正规军艰难地绞杀了起义的百姓。城郭半毁，人口锐减。'
+        },
+        right: {
+            text: '下罪己诏',
+            preview: '损名安抚',
+            effects: { reputation: -25, food: -15, morale: 20 },
+            outcome: '你当众脱去锦袍，下跪向百姓谢罪，并开仓放粮。颜面扫地，但总算平息了民愤。'
+        }
+    },
+    {
+        id: 'disaster_military_low',
+        triggerCrisis: 'crisis_military_low',
+        title: '【危机】贼寇压境',
+        character: '斥候',
+        description: '城防空虚的消息走漏，附近流寇大军压境。探子飞报：不日便将破城！',
+        left: {
+            text: '割地赔款',
+            preview: '破财消灾',
+            effects: { wealth: -20, food: -20, reputation: -10 },
+            outcome: '你送出了几乎所有的积蓄和存粮供给贼军。他们大笑离去，嘲笑你的软弱。'
+        },
+        right: {
+            text: '破釜沉舟',
+            preview: '背水一战',
+            effects: { morale: -20, population: -20, military: 15 },
+            outcome: '你强征壮丁，毁锅砸碗逼迫全城死战。惨烈的守城赢了，但家家缟素。'
+        }
+    },
+    {
+        id: 'disaster_wealth_low',
+        triggerCrisis: 'crisis_wealth_low',
+        title: '【危机】吏卒哗变',
+        character: '账房',
+        description: '府库彻底破产，连月发不出军饷，吏卒们拔出刀剑聚众讨要说法！',
+        left: {
+            text: '纵兵抢掠',
+            preview: '纵容作恶',
+            effects: { morale: -30, reputation: -20, wealth: 15 },
+            outcome: '为了平息兵变，你默认了士兵在城中劫掠三日。人间炼狱，名声尽毁。'
+        },
+        right: {
+            text: '变卖军需',
+            preview: '削足适履',
+            effects: { food: -15, military: -15, wealth: 15 },
+            outcome: '你不得不将粮草和军械低价折现发饷。哗变平息，但城镇武备荡然无存。'
+        }
+    },
+    {
+        id: 'disaster_reputation_low',
+        triggerCrisis: 'crisis_reputation_low',
+        title: '【危机】众叛亲离',
+        character: '谋士',
+        description: '由于你名声恶劣，原本的幕僚和武将纷纷开始收拾行囊准备弃你而去！',
+        left: {
+            text: '重金挽留',
+            preview: '收买人心',
+            effects: { wealth: -25, food: -10, reputation: 15 },
+            outcome: '你只得用巨大的物质利益重新绑定了这群唯利是图的部下。'
+        },
+        right: {
+            text: '听之任之',
+            preview: '树倒猢狲散',
+            effects: { population: -40, military: -15, morale: -10 },
+            outcome: '大批人才与心腹连夜出走，带走了大量人口与亲兵，小镇元气大伤。'
+        }
+    },
+    // ---- 高风险博弈 (High Value Crises) ----
+    {
+        id: 'disaster_wealth_high',
+        triggerCrisis: 'crisis_wealth_high',
+        title: '【高危】树大招风',
+        character: '使者',
+        description: '小镇横财外露，富甲一方。此举招致了董卓军的垂涎，其先锋部队已至城下勒索钱财！',
+        left: {
+            text: '强硬拒之',
+            preview: '玉石俱焚',
+            effects: { military: -20, population: -15 },
+            outcome: '你拒绝交钱，双方爆发血战。虽然依靠城防勉强击退敌人，但也损失惨重。'
+        },
+        right: {
+            text: '破财免灾',
+            preview: '交出六成',
+            effects: { wealth: -30, reputation: -10 },
+            outcome: '你被迫交出了大批金铢。虽然肉痛，但这保全了镇子的安宁。'
+        }
+    },
+    {
+        id: 'disaster_food_high',
+        triggerCrisis: 'crisis_food_high',
+        title: '【高危】诸侯强借',
+        character: '使者',
+        description: '城中粮如山积，四方皆知。袁绍使者傲慢入城：“盟军讨贼，借尔等半年粮草一用。”',
+        left: {
+            text: '抗命不遵',
+            preview: '触怒盟主',
+            effects: { reputation: 10, military: -15, morale: -5 },
+            outcome: '你大义凛然拒绝。随后遭到了袁军的报复性袭击，防线损失不小。'
+        },
+        right: {
+            text: '开仓放粮',
+            preview: '耗粮',
+            effects: { food: -40, reputation: 5 },
+            outcome: '大批粮车被拉走，几近掏空了太仓。不过袁大将军倒是夸了你一句识时务。'
+        }
+    }
+];
+
+window.DISASTER_EVENTS = DISASTER_EVENTS;
+
+console.log('events.js v0.8 加载完成，共', EVENTS.length, '个事件，及', DISASTER_EVENTS.length, '个灾难卡');

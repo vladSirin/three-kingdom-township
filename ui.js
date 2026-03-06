@@ -192,10 +192,16 @@ window.showToast = function (message, type = '') {
     toast.className = `toast ${type}`;
     toast.innerText = message;
 
-    // 播放提示音 (可根据类型播放不同声音)
+    // 播放提示音 & 屏幕震动逻辑
     if (type === 'positive') SoundSys.good();
     else if (type === 'neutral') SoundSys.slide();
-    else SoundSys.bad();
+    else {
+        SoundSys.bad();
+        if (type === 'negative') {
+            document.body.classList.add('screen-shake');
+            setTimeout(() => document.body.classList.remove('screen-shake'), 500);
+        }
+    }
 
     DOM.toastContainer.appendChild(toast);
 
