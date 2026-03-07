@@ -378,7 +378,13 @@ function updateUI() {
                 }
             }
             if (DOM.alignmentBuffs) {
-                DOM.alignmentBuffs.innerHTML = buffHTML ? `<h4>当前被动效果：</h4>${buffHTML}` : '<h4 class="empty-list-hint">当前倾向无额外效果</h4>';
+                if (buffHTML) {
+                    DOM.alignmentBuffs.style.display = 'block';
+                    DOM.alignmentBuffs.innerHTML = `<h4>当前被动效果：</h4>${buffHTML}`;
+                } else {
+                    DOM.alignmentBuffs.style.display = 'none';
+                    DOM.alignmentBuffs.innerHTML = '';
+                }
             }
         }
     }
