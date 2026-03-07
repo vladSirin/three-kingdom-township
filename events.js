@@ -59,7 +59,7 @@ const EVENTS = [
         character: '农官',
         description: '【春】冰雪消融，万物复苏。又到了发放良种、劝课农桑的时候。',
         condition: { season: 0 },
-        weight: 1000,
+        weight: 20,
         left: {
             text: '竭林而渔',
             preview: '不发种子',
@@ -88,7 +88,7 @@ const EVENTS = [
         character: '司天监',
         description: '【夏】炎夏已至，庄稼进入了最关键的生长期。天有不测风云，今年的年景如何呢？',
         condition: { season: 1 },
-        weight: 1000,
+        weight: 20,
         left: {
             text: '听天由命',
             preview: '静候',
@@ -121,7 +121,7 @@ const EVENTS = [
         character: '户籍官',
         description: '【秋】金风送爽，终于到了收获的季节。看着入库的如山粮草，你决定如何定额抽税？\n(结算获得一整年口粮)',
         condition: { season: 2 },
-        weight: 1000,
+        weight: 20,
         left: {
             text: '藏富于民',
             preview: '轻徭薄赋',
@@ -147,7 +147,7 @@ const EVENTS = [
         character: '里正',
         description: '【冬】大雪封路，严寒刺骨。农闲时节，最大的挑战是防止冻饿带来的减员。',
         condition: { season: 3 },
-        weight: 1000,
+        weight: 20,
         left: {
             text: '紧闭城门',
             preview: '自给自足',
@@ -762,11 +762,19 @@ const EVENTS = [
             effects: { population: -40, morale: -10 },
             outcome: '你下令封锁了受灾街区。哀鸿遍野中，疫病虽得以控制，但代价惨重。'
         },
-        right: {
+        neutral: {
             text: '开仓放药',
             preview: '救火',
             effects: { wealth: -15, food: -10, population: -15, morale: 5 },
             outcome: '虽然耗费了巨额公帑与粮草，但多数百姓得以保全，民心依然稳固。'
+        },
+        right: {
+            text: '医馆施治',
+            preview: '庇护(需医馆)',
+            probHint: '必定成功',
+            condition: { building: 'hospital', minLevel: 1 },
+            effects: { wealth: -5, food: -5, morale: 15, reputation: 10 },
+            outcome: '得益于医馆的提前部署和有效救治，瘟疫被迅速扑灭，百姓不仅没有恐慌，反而更加感念你的仁德。'
         }
     },
     {
@@ -1040,6 +1048,70 @@ const EVENTS = [
             effects: { wealth: -15, food: -5, morale: 5 },
             outcome: '工匠们日夜赶工，用真材实料重新加固了隐患处。这块心病总算除去了。（隐患已排除）',
             removeState: 'shoddy_work'
+        }
+    },
+
+    // ============================================
+    // 政令卡组 (Edicts as Event Cards - CL1)
+    // ============================================
+    {
+        id: 'edict_charity',
+        title: '政令：开仓赈济',
+        character: '属官',
+        description: '粮仓满盈。你是否愿意主动开仓放粮，救济周边逃荒而来的贫苦百姓？',
+        condition: { building: 'granary', minLevel: 3 },
+        weight: 30,
+        left: {
+            text: '无需多事',
+            preview: '暂缓',
+            effects: {},
+            outcome: '你认为这些粮食应当留待不可预见的灾年。'
+        },
+        right: {
+            text: '开仓放粮',
+            preview: '损粮换心',
+            effects: { food: -15, wealth: -10, morale: 20, alignment: 10 },
+            outcome: '粮车驶出官署，百姓欢声雷动，纷纷称颂您的仁德。'
+        }
+    },
+    {
+        id: 'edict_recruit',
+        title: '政令：招兵买马',
+        character: '军官',
+        description: '军械库装备充足，是否趁天下大乱之际，散尽家财招募四方勇士补充军备？',
+        condition: { building: 'armory', minLevel: 3 },
+        weight: 30,
+        left: {
+            text: '按兵不动',
+            preview: '暂缓',
+            effects: {},
+            outcome: '你认为现在的军力已经足以自保，不宜过度招摇。'
+        },
+        right: {
+            text: '大肆招募',
+            preview: '钱粮换武',
+            effects: { wealth: -15, food: -10, military: 20, alignment: -5 },
+            outcome: '重赏之下必有勇夫！各路亡命之徒纷纷投效，你的军队迅速扩充，但行事也越发霸道。'
+        }
+    },
+    {
+        id: 'edict_banquet',
+        title: '政令：大宴宾客',
+        character: '幕僚',
+        description: '官署宏伟，正是彰显主公威仪的好时机。是否要举办一场盛大的宴会，邀请名流雅士？',
+        condition: { building: 'office', minLevel: 3 },
+        weight: 30,
+        left: {
+            text: '谢绝访客',
+            preview: '暂缓',
+            effects: {},
+            outcome: '你更喜欢清静，名流们见不到主公，只能扫兴而归。'
+        },
+        right: {
+            text: '大摆筵席',
+            preview: '损财换名',
+            effects: { wealth: -20, reputation: 15, morale: 5 },
+            outcome: '丝竹管弦之声彻夜不息。名士们饮酒作赋，将你的慷慨与威名传遍天下。'
         }
     }
 ];

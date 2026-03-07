@@ -402,6 +402,25 @@ function endOfSeason() {
         modifyResource('food', -foodConsumption);
     }
 
+    // --- 【四季农耕】背景自动化 (Hybrid Iteration) ---
+    let autoSowLog = '';
+    if (GameState.season === 0) { // 春季播种底层消耗
+        let cost = Math.max(1, Math.floor(GameState.population / 20)); // 每20人需要1粮的种子储备
+        if (GameState.resources.food >= cost) {
+            modifyResource('food', -cost);
+            // 只有当玩家没有通过极品事件预先获得播种BUFF时才挂基础BUFF
+            if (!GameState.activeStates.find(s => s.id.startsWith('sown_'))) {
+                GameState.activeStates.push({ id: 'sown_normal', duration: 4 });
+                autoSowLog = '【春耕】官府拨粮发种，百姓按部就班开始了春耕。';
+            }
+        } else {
+            if (!GameState.activeStates.find(s => s.id.startsWith('sown_'))) {
+                GameState.activeStates.push({ id: 'sown_poor', duration: 4 });
+                autoSowLog = '【春耕】府库空虚，无粮发种。即使熬到秋长也将面临歉收！';
+            }
+        }
+    }
+
     // [v12.6] 季报日志
     if (window.renderChatLog) {
         const parts = [];
@@ -413,6 +432,20 @@ function endOfSeason() {
 
         const reportText = `【季报】${parts.join('，')}。`;
         window.renderChatLog({ type: 'system', text: reportText });
+
+        if (autoSowLog) {
+            window.renderChatLog({ type: 'system', text: autoSowLog });
+        }
+
+        // 建筑被动恢复日志 (CL2)
+        const recoveryParts = [];
+        if (income.militaryRecovery) recoveryParts.push(`兵器坊持续熔铸，武备缓慢恢复(+${income.militaryRecovery})`);
+        if (income.moraleRecovery) recoveryParts.push(`高大坚固的城坊让民心缓缓安定(+${income.moraleRecovery})`);
+        if (income.reputationRecovery) recoveryParts.push(`庄严的官府让主公声威远播(+${income.reputationRecovery})`);
+
+        if (recoveryParts.length > 0) {
+            window.renderChatLog({ type: 'system', text: '【恢复】' + recoveryParts.join('。') });
+        }
     }
 
     return completed;
@@ -461,6 +494,37 @@ function applyBuildingIncome() {
     // 应用其他被动改变 (如声望、民心的自然增减)
     if (mods.morale_change_flat !== 0) modifyResource('morale', mods.morale_change_flat);
     if (mods.reputation_change_flat !== 0) modifyResource('reputation', mods.reputation_change_flat);
+
+    // --- 满级建筑被动底线恢复 (CL2) ---
+    // 军械库 (Armory) >= Lv3
+    if (b.armory >= 3) {
+        let cap = GameState.resourceCaps.military || 100;
+        if (GameState.resources.military <= cap * 0.6) {
+            let recovery = b.armory >= 5 ? 2 : 1;
+            modifyResource('military', recovery);
+            income.militaryRecovery = recovery;
+        }
+    }
+
+    // 民房 (Housing) >= Lv3
+    if (b.housing >= 3) {
+        let cap = GameState.resourceCaps.morale || 100;
+        if (GameState.resources.morale <= cap * 0.6) {
+            let recovery = b.housing >= 5 ? 2 : 1;
+            modifyResource('morale', recovery);
+            income.moraleRecovery = recovery;
+        }
+    }
+
+    // 官署 (Office) >= Lv3
+    if (b.office >= 3) {
+        let cap = GameState.resourceCaps.reputation || 100;
+        if (GameState.resources.reputation <= cap * 0.6) {
+            let recovery = b.office >= 5 ? 2 : 1;
+            modifyResource('reputation', recovery);
+            income.reputationRecovery = recovery;
+        }
+    }
 
     // 人口被动增长 (如瘟疫或安居乐业)
     if (mods.pop_growth_flat !== 0) {
@@ -521,21 +585,7 @@ function drawNextEvent() {
         }
     }
 
-    // 2. 季节性强制卡拦截 (Seasonal Agriculture System)
-    // 遍历总字库寻找当前季节的专属卡（必须要有 condition.season 并且等于当前季节）
-    const seasonalEvent = EVENTS.find(e =>
-        e.condition &&
-        e.condition.season !== undefined &&
-        e.condition.season === GameState.season
-    );
-
-    // 如果找到了当前季节的节气卡，直接强制触发，确保农耕循环一定发生
-    if (seasonalEvent) {
-        GameState.currentEvent = seasonalEvent;
-        return seasonalEvent;
-    }
-
-    // 3. 常规事件池
+    // 2. 常规事件池
     if (GameState.eventQueue.length === 0) initEventQueue();
     let event = null;
     while (GameState.eventQueue.length > 0) {
