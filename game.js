@@ -63,6 +63,9 @@ const GameState = {
     // 主公倾向光谱 [-100, 100]
     alignment: 0,
 
+    // 劫掠恶名层数 (血海深仇层数)
+    infamy: 0,
+
     // 概率修正器 (用于影响随机结果)
     modifiers: {
         success_rate: 0,      // 通用成功率修正
@@ -258,6 +261,11 @@ function modifyResources(changes) {
 
         if (k === 'alignment') {
             GameState.alignment = Math.max(-100, Math.min(100, GameState.alignment + v));
+        } else if (k === 'infamy') {
+            GameState.infamy = Math.max(0, GameState.infamy + v);
+            if (window.showToast && v > 0) {
+                window.showToast(`🔥 恶名昭彰！结下血海深仇 (层数: ${GameState.infamy})`, 'negative');
+            }
         } else if (k === 'population') {
             // 人口允许突破上限 (Overflow)
             GameState.population = Math.max(0, GameState.population + v);
@@ -267,7 +275,7 @@ function modifyResources(changes) {
     }
 }
 
-function checkGameOver() {
+function checkGameOver(isEndOfSeason = false) {
     for (const [resource, value] of Object.entries(GameState.resources)) {
         const cap = GameState.resourceCaps[resource] || 100;
 
@@ -279,29 +287,34 @@ function checkGameOver() {
                 if (window.showToast) window.showToast(`🚨 极危警告：${RESOURCE_NAMES[resource]}已尽，小镇即将在 3 季内面临崩溃！`, 'negative');
             }
         } else {
-            // 安全线以上，自动解除低位危机
-            if (value >= 1) { // 如果是财富或武力等，恢复到1点即可解除 (也可设置更高安全线)
+            // 安全线以上，自动解除低位危机 (加入15%阻尼缓冲，最少需恢复10点)
+            const safeThreshold = Math.max(10, Math.floor(cap * 0.15));
+            if (value >= safeThreshold) {
                 const stateIndex = GameState.activeStates.findIndex(s => s.id === lowCrisisId);
                 if (stateIndex > -1) {
                     GameState.activeStates.splice(stateIndex, 1);
-                    if (window.showToast) window.showToast(`✨ 危机解除：${RESOURCE_NAMES[resource]}恢复，危机脱险。`, 'positive');
+                    if (window.showToast) window.showToast(`✨ 危机解除：${RESOURCE_NAMES[resource]}恢复至安全线，脱离险境。`, 'positive');
                 }
             }
         }
 
-        // 2. 高位危机检测 ( >= cap * 0.9)
+        // 2. 高位危机检测 ( >= cap )
         const highCrisisId = `crisis_${resource}_high`;
         // 不对所有资源生效高位危机，仅针对财、粮等
-        if ((resource === 'wealth' || resource === 'food') && value >= cap * 0.9) {
-            if (!GameState.activeStates.find(s => s.id === highCrisisId)) {
-                addActiveState(highCrisisId, 3);
-                if (window.showToast) window.showToast(`⚠️ 警告：${RESOURCE_NAMES[resource]}囤积过多，恐遭人觊觎！`, 'negative');
-            }
-        } else {
-            const stateIndex = GameState.activeStates.findIndex(s => s.id === highCrisisId);
-            if (stateIndex > -1) {
-                GameState.activeStates.splice(stateIndex, 1);
-                if (window.showToast) window.showToast(`✨ 危机解除：${RESOURCE_NAMES[resource]}消耗，不再惹眼。`, 'positive');
+        if (resource === 'wealth' || resource === 'food') {
+            if (value >= cap) {
+                // 仅在换季结算时才施加真实的高位危机倒计时，给玩家回合内消费的缓冲时间
+                if (isEndOfSeason && !GameState.activeStates.find(s => s.id === highCrisisId)) {
+                    addActiveState(highCrisisId, 3);
+                    if (window.showToast) window.showToast(`⚠️ 囤积警告：${RESOURCE_NAMES[resource]}严重溢出！若不散财销粮，必遭大祸！`, 'negative');
+                }
+            } else if (value <= cap * 0.85) {
+                // 消耗至 85% 以下，解除高危状态
+                const stateIndex = GameState.activeStates.findIndex(s => s.id === highCrisisId);
+                if (stateIndex > -1) {
+                    GameState.activeStates.splice(stateIndex, 1);
+                    if (window.showToast) window.showToast(`✨ 危机解除：${RESOURCE_NAMES[resource]}随势散去，不再惹眼。`, 'positive');
+                }
             }
         }
     }
@@ -447,6 +460,9 @@ function endOfSeason() {
             window.renderChatLog({ type: 'system', text: '【恢复】' + recoveryParts.join('。') });
         }
     }
+
+    // 季末进行一次强制的高危死亡判定探测 (给玩家回合内消费的缓冲期已结束)
+    checkGameOver(true);
 
     return completed;
 }
@@ -648,6 +664,12 @@ function checkEventCondition(event) {
 
     if (c.state !== undefined) {
         if (!GameState.activeStates.some(s => s.id === c.state)) return false;
+    }
+    if (c.minInfamy !== undefined) {
+        if (GameState.infamy < c.minInfamy) return false;
+    }
+    if (c.maxInfamy !== undefined) {
+        if (GameState.infamy > c.maxInfamy) return false;
     }
     if (c.minAlignment !== undefined) {
         if (GameState.alignment < c.minAlignment) return false;
@@ -915,6 +937,7 @@ function getGameStateForUI() {
         constructions: GameState.constructions,
         activeStates: GameState.activeStates,
         alignment: GameState.alignment,
+        infamy: GameState.infamy,
         traits: GameState.traits, // 保留以防其他地方报错，但废弃
         year: GameState.year,
         season: GameState.season,

@@ -234,10 +234,10 @@ const EVENTS = [
         },
         right: {
             text: '扩建农田',
-            preview: '开疆但耗财',
-            effects: { wealth: -15, food: -5, reputation: 8 },
+            preview: '投资远期',
+            effects: { wealth: -15, reputation: 8 },
             startConstruction: { building: 'farm', duration: 2 },
-            outcome: '你下令开垦荒地。虽当前劳民伤财，但你的声报在各郡县愈加响亮。'
+            outcome: '你下令开垦荒地。虽耗费钱财，但为你赢得了远见卓识的美名，未来也将受惠。'
         }
     },
 
@@ -352,13 +352,13 @@ const EVENTS = [
             preview: '得财险名',
             effects: { wealth: 15, food: 10, reputation: -15 },
             outcome: '商队被洗劫一空，你获得了补给，但被州郡列为“强盗”，并且被受害商会盯上。',
-            addState: { id: 'fat_sheep', duration: 3 }
+            addState: { id: 'merchant_grudge', duration: 6 }
         },
         right: {
             text: '攻打邻县',
             preview: '穷武豪夺',
-            effects: { military: -20, wealth: 30, food: 25, population: -10, morale: -5, alignment: -30 },
-            outcome: '你率军屠掠了邻近的村县！满载而归的背后是累累白骨，天下人视你如豺狼。（倾向大跌）'
+            effects: { infamy: 1, military: -20, wealth: 30, food: 25, population: -10, morale: -5, alignment: -30 },
+            outcome: '你率军屠掠了邻近的村县！满载而归的背后是累累白骨，天下人视你如豺狼。虽然解了一时之困，但这笔血债迟早要还。'
         }
     },
 
@@ -420,9 +420,9 @@ const EVENTS = [
         description: '又到了收税的季节，税吏请示征收标准。',
         left: {
             text: '减免税收',
-            preview: '失财但得爱',
-            effects: { wealth: -15, morale: 20, reputation: 10 },
-            outcome: '百姓欢声雷动。你虽然窮得只能喝粥，但在民众心中你是活菩萨。'
+            preview: '免税得心',
+            effects: { morale: 20, reputation: 10 },
+            outcome: '你下令免去今季赋税，百姓欢声雷动。虽然府库未曾进账，但在民众心中你是活菩萨。'
         },
         neutral: {
             text: '维持原额',
@@ -833,9 +833,9 @@ const EVENTS = [
         weight: 15,
         left: {
             text: '妥协免税',
-            preview: '失财得心',
-            effects: { wealth: -10, morale: 8, reputation: -5 },
-            outcome: '你选择退让并下达了免税令。虽然府库受损，管治威信下降，但暴乱和平解散。'
+            preview: '退让免除',
+            effects: { morale: 8, reputation: -5 },
+            outcome: '你选择退让并下达了免税令。虽然未能收到钱粮，管治威信也随之下降，但暴乱和平解散。'
         },
         neutral: {
             text: '逮捕首恶',
@@ -1112,6 +1112,106 @@ const EVENTS = [
             preview: '损财换名',
             effects: { wealth: -20, reputation: 15, morale: 5 },
             outcome: '丝竹管弦之声彻夜不息。名士们饮酒作赋，将你的慷慨与威名传遍天下。'
+        }
+    },
+
+    // ============================================
+    // 复仇与因果 (Revenge Pool)
+    // ============================================
+    {
+        id: 'trade_embargo',
+        title: '断绝商路',
+        character: '商人',
+        description: '你此前劫掠商队的行径触怒了州郡商会，他们联手封锁了小镇的贸易路线。',
+        condition: { state: 'merchant_grudge' },
+        weight: 80, // 极高权重，状态期间必定反复触发
+        left: {
+            text: '重金赔罪',
+            preview: '破财消灾',
+            effects: { wealth: -30, reputation: 5 },
+            outcome: '你咬牙掏出了双倍的赔款。商会见钱眼开，勉强解除了封锁。',
+            removeState: 'merchant_grudge'
+        },
+        neutral: {
+            text: '强行调配',
+            preview: '军管物资',
+            effects: { military: -10, morale: -10 },
+            outcome: '你动用军队强行接管城内外物资调配。虽避免了断供，但军民怨声载道。'
+        },
+        right: {
+            text: '无动于衷',
+            preview: '无视封锁',
+            effects: { wealth: -15, reputation: -10 },
+            outcome: '商道中断，百业凋敝，府库的税收大幅缩水，名声进一步恶化。'
+        }
+    },
+    {
+        id: 'arsonist_revenge',
+        title: '烈火复仇',
+        character: '难民',
+        description: '深夜，被你劫掠破家之人的遗孤潜入城中，向官署与粮仓扔出了带火的柴薪！',
+        condition: { minInfamy: 1 },
+        weight: 40,
+        left: {
+            text: '抢救粮草',
+            preview: '保粮损财',
+            effects: { wealth: -20, morale: -5 },
+            outcome: '亲卫们拼死护住了粮仓，但官府设施付之一炬，你必须花重金重新修缮。'
+        },
+        neutral: {
+            text: '出兵抓捕',
+            preview: '保威损粮',
+            effects: { food: -20, military: 5 },
+            outcome: '刺客被当场格杀悬首示众！武威虽在，但燃烧的粮仓成了百姓们冬日的绝望。'
+        },
+        right: {
+            text: null
+        }
+    },
+    {
+        id: 'blood_for_blood',
+        title: '死士刺杀',
+        character: '剑客',
+        description: '你的残暴树敌无数。光天化日之下，几名披麻戴孝的死士持短刃冲向你的车驾！',
+        condition: { minInfamy: 2 },
+        weight: 60,
+        left: {
+            text: '亲卫死战',
+            preview: '血影交锋',
+            effects: { military: -20, morale: -10, reputation: -15 },
+            outcome: '亲卫死伤惨重，街市血流成河。你虽然活了下来，但惊厥吐血，威名受损。'
+        },
+        neutral: {
+            text: '收买内应',
+            preview: '花钱索命',
+            effects: { wealth: -40, alignment: -20 },
+            outcome: '你早已用重金买通了杀手内部的人。死士刚拔刀就被同伴从背后斩首，你的冷酷让全城噤寒。'
+        },
+        right: {
+            text: null
+        }
+    },
+    {
+        id: 'vengeful_army',
+        title: '复仇义军袭城',
+        character: '队长',
+        description: '你所造的业终于等来了报应！周边被你屠杀劫掠的村县联合组建了一支复仇军，打着“诛暴君”的血旗兵临城下！',
+        condition: { minInfamy: 3 },
+        weight: 50,
+        left: {
+            text: '拼死死守',
+            preview: '惨烈守城',
+            effects: { military: -40, population: -20, morale: -20, wealth: -20, food: -20 },
+            outcome: '血战三日，城下尸骨如山。你勉强击退了这群被仇恨驱使的复仇者，但小镇也已经元气大伤。'
+        },
+        neutral: {
+            text: '开城血洗',
+            preview: '斩草除根',
+            effects: { infamy: -3, military: -20, population: -15, alignment: -50 },
+            outcome: '由于你拥有压倒性的武力，你选择了出城野战，将复仇军尽数坑杀！血债虽在此刻用屠杀结清（恶名归零），但你已彻底沦为嗜血的魔头。'
+        },
+        right: {
+            text: null
         }
     }
 ];

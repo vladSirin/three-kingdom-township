@@ -72,6 +72,11 @@ const DOM = {
     traitsList: document.getElementById('traits-list'),
     toastContainer: document.getElementById('toast-container'),
 
+    // 倾向光谱 (Alignment Spectrum)
+    alignmentMarker: document.getElementById('alignment-marker'),
+    alignmentStatusText: document.getElementById('alignment-status-text'),
+    alignmentBuffs: document.getElementById('alignment-buffs'),
+
     // 中控台 (Hub) -> 改为弹幕层
     danmakuContainer: document.getElementById('danmaku-container'),
     constructionStatus: document.getElementById('construction-status'),
