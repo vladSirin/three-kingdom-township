@@ -3,7 +3,165 @@
  * MVP v0.7 - 城镇建设事件
  */
 
+/**
+ * @typedef {Object} EventCondition
+ * @property {string} [building] - Required building ID (e.g., 'hospital', 'market')
+ * @property {number} [minLevel] - Minimum level of the required building
+ * @property {number} [maxLevel] - Maximum level of the required building
+ * @property {string} [resource] - Specific resource to check (e.g., 'food', 'wealth')
+ * @property {number} [minValue] - Minimum raw value of the resource
+ * @property {number} [minPopRatio] - Minimum population capacity ratio (0.0 to X.X)
+ * @property {number} [maxPopRatio] - Maximum population capacity ratio (0.0 to X.X)
+ * @property {Object<string, number>} [minResourceRatio] - Minimum resource capacity ratio mapping (e.g. { wealth: 0.8 })
+ * @property {Object<string, number>} [maxResourceRatio] - Maximum resource capacity ratio mapping
+ * @property {string} [state] - Must have this active state ID (e.g., 'starving', 'shoddy_work')
+ * @property {number} [minAlignment] - Minimum alignment spectrum value (-100 to 100)
+ * @property {number} [maxAlignment] - Maximum alignment spectrum value (-100 to 100)
+ * @property {boolean} [isConstructing] - True if town must be currently building something, false if must be idle
+ */
+
+/**
+ * @typedef {Object} ChoiceOutcome
+ * @property {string} text - The button text
+ * @property {string} preview - Short preview text describing the flavor of the choice
+ * @property {Object<string, number>} [effects] - Flat resource or alignment modifications (e.g. { food: -10, alignment: 15 })
+ * @property {string} outcome - Narrative text explicitly shown after this choice is resolved
+ * @property {Object} [startConstruction] - { building: 'farm', duration: 2 } Trigger a construction process
+ * @property {Object} [addState] - { id: 'fat_sheep', duration: 3 } Adds a global active state
+ * @property {string} [removeState] - Removes a global active state by ID
+ * @property {boolean} [skipAdvance] - If true, the turn does not advance after this event
+ * @property {string} [probHint] - Optional UI string to display probability hints (e.g., "高风险")
+ * @property {Array<{weight: number, modifierTag?: string, effects?: Object, outcome: string, addState?: Object, startConstruction?: Object}>} [outcomes] - For randomized resolution
+ */
+
+/**
+ * @typedef {Object} GameEvent
+ * @property {string} id - Unique identifier
+ * @property {string} title - Card header title
+ * @property {string} character - The NPC/Role presenting the event
+ * @property {string} description - The narrative description of the event on the card
+ * @property {EventCondition} [condition] - Criteria for this event to be injected into the valid pool
+ * @property {number} [weight] - Base draw probability (default is 10)
+ * @property {string} [modifierTag] - Tag for dynamic probability modifiers from traits/states
+ * @property {ChoiceOutcome} [left] - Left choice configuration
+ * @property {ChoiceOutcome} [neutral] - Neutral choice configuration
+ * @property {ChoiceOutcome} [right] - Right choice configuration
+ * @property {boolean} [isNotification] - If true, this is a forced notification without time advance
+ */
+
 const EVENTS = [
+    // ============================================
+    // 四季农耕系统卡组 (Seasonal Agriculture)
+    // ============================================
+    {
+        id: 'spring_sowing',
+        title: '春耕大典',
+        character: '农官',
+        description: '【春】冰雪消融，万物复苏。又到了发放良种、劝课农桑的时候。',
+        condition: { season: 0 },
+        weight: 1000,
+        left: {
+            text: '竭林而渔',
+            preview: '不发种子',
+            effects: { morale: -15, reputation: -10 },
+            outcome: '你为了强军或贪图享受，拒绝开仓发种。今年农田将减产大半。',
+            addState: { id: 'sown_poor', duration: 4 }
+        },
+        neutral: {
+            text: '休养生息',
+            preview: '按户发种',
+            effects: { food: -5, wealth: -2 },
+            outcome: '官府按户籍发放了基础的种子，百姓按部就班开始了春耕。',
+            addState: { id: 'sown_normal', duration: 4 }
+        },
+        right: {
+            text: '劝课农桑',
+            preview: '倾力大播',
+            effects: { wealth: -15, morale: -5 },
+            outcome: '你自掏腰包购买耕牛，并强制男丁下地。虽然劳役沉重，但若不遇天灾，秋收必将丰盈！',
+            addState: { id: 'sown_bountiful', duration: 4 }
+        }
+    },
+    {
+        id: 'summer_weather',
+        title: '气象万千',
+        character: '司天监',
+        description: '【夏】炎夏已至，庄稼进入了最关键的生长期。天有不测风云，今年的年景如何呢？',
+        condition: { season: 1 },
+        weight: 1000,
+        left: {
+            text: '听天由命',
+            preview: '静候',
+            probHint: '气候难测',
+            outcomes: [
+                {
+                    weight: 3,
+                    effects: { morale: -5, reputation: -2 },
+                    outcome: '【大旱】烈日当空，土地龟裂。今年的春耕成果大受打击！由于未能祈雨，百姓多有怨言。',
+                    addState: { id: 'sown_poor', duration: 3 },
+                    removeState: 'sown_bountiful'
+                },
+                {
+                    weight: 3,
+                    modifierTag: 'military_bonus',
+                    effects: { military: -10, morale: -5 },
+                    outcome: '【蝗灾】漫天飞蝗扫过天际！你紧急调动驻军参与捕杀，虽然损失了战备，但保住了庄稼。'
+                },
+                {
+                    weight: 4,
+                    effects: { morale: 10, reputation: 5 },
+                    outcome: '【风调雨顺】今年夏天雨水充沛，日照充足。看来秋天是个难得的丰收大年！'
+                }
+            ]
+        }
+    },
+    {
+        id: 'autumn_harvest',
+        title: '秋收大熟',
+        character: '户籍官',
+        description: '【秋】金风送爽，终于到了收获的季节。看着入库的如山粮草，你决定如何定额抽税？\n(结算获得一整年口粮)',
+        condition: { season: 2 },
+        weight: 1000,
+        left: {
+            text: '藏富于民',
+            preview: '轻徭薄赋',
+            effects: { food: -10, morale: 20, reputation: 15, alignment: 20 },
+            outcome: '你下令减免三成秋税。百姓欢呼雀跃，甚至有人为你立了生祠！'
+        },
+        neutral: {
+            text: '开仓纳粮',
+            preview: '如常秋税',
+            effects: { morale: 5, wealth: 5 },
+            outcome: '常规的收税比例。府库再次充盈，准备迎接漫长的寒冬。'
+        },
+        right: {
+            text: '横征暴敛',
+            preview: '加派秋税',
+            effects: { food: 15, wealth: 15, morale: -30, reputation: -20, alignment: -30 },
+            outcome: '官差如狼似虎地冲进村庄，连百姓过冬的口粮也一并夺走。你赚得盆满钵满，但天下震怒。'
+        }
+    },
+    {
+        id: 'winter_survival',
+        title: '越冬大雪',
+        character: '里正',
+        description: '【冬】大雪封路，严寒刺骨。农闲时节，最大的挑战是防止冻饿带来的减员。',
+        condition: { season: 3 },
+        weight: 1000,
+        left: {
+            text: '紧闭城门',
+            preview: '自给自足',
+            effects: { morale: -5, population: -5 },
+            outcome: '你拒绝救助城外零星的流民，城内百姓也只能缩在屋里熬过漫漫长冬。'
+        },
+        right: {
+            text: '施衣赐炭',
+            preview: '耗财保人',
+            effects: { wealth: -10, morale: 10, reputation: 5 },
+            outcome: '府衙出资购买柴炭派发，极大缓解了底层百姓的冻灾，镇子在寒冬中也透出了一丝暖意。'
+        }
+    },
+
     // ============================================
     // 民生事件
     // ============================================

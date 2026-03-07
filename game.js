@@ -386,15 +386,30 @@ function endOfSeason() {
         overflowPenalty = 1; // 标记存在溢出惩罚
     }
 
-    modifyResource('food', -foodConsumption);
+    let starvationDeaths = 0;
+    // --- 【四季农耕】硬核断粮判定 ---
+    // 因粮草主要只能在秋季获取，断粮后每回合都会饿死人
+    if (GameState.resources.food < foodConsumption) {
+        // 计算缺粮的人口数
+        const starvingPop = (foodConsumption - GameState.resources.food) * 25;
+        // 饿死率为 15%
+        starvationDeaths = Math.ceil(starvingPop * 0.15);
+        GameState.population = Math.max(0, GameState.population - starvationDeaths);
+
+        // 尽力扣除剩余粮草至 0
+        modifyResource('food', -GameState.resources.food);
+    } else {
+        modifyResource('food', -foodConsumption);
+    }
 
     // [v12.6] 季报日志
     if (window.renderChatLog) {
         const parts = [];
-        if (income.food > 0) parts.push(`农田获粮 ${income.food}`);
+        if (income.food > 0) parts.push(`秋收获粮 ${income.food}`);
         if (income.wealth > 0) parts.push(`市场收税 ${income.wealth}`);
         parts.push(`人丁消耗 ${foodConsumption}粮`);
         if (overflowPenalty) parts.push(`(人口拥挤导致消耗翻倍)`);
+        if (starvationDeaths > 0) parts.push(`<span style="color:red">饥荒饿死 ${starvationDeaths}人</span>`);
 
         const reportText = `【季报】${parts.join('，')}。`;
         window.renderChatLog({ type: 'system', text: reportText });
@@ -409,13 +424,29 @@ function applyBuildingIncome() {
     const mods = EffectSystem.calcModifiers();
     let income = { food: 0, wealth: 0 };
 
-    // 农田产粮 (受人口规模正向影响)
-    if (b.farm > 0) {
-        let farmIncome = b.farm * (pop / 20);
+    // --- 【四季农耕】农田产粮 ---
+    // 只有在秋季 (Season 2) 才能产出全部口粮，产出量为基础（受人口与模组影响）的 4 倍，以支撑一年的消耗。
+    if (b.farm > 0 && GameState.season === 2) {
+        let farmIncome = b.farm * (pop / 20) * 4.1;
         farmIncome *= mods.food_production_mult;
-        farmIncome = Math.floor(farmIncome);
+
+        // 根据春季播种的 state flag 计算丰欠
+        let harvestMultiplier = 1.0;
+        if (GameState.activeStates.find(s => s.id === 'sown_bountiful')) {
+            harvestMultiplier = 1.5;
+        } else if (GameState.activeStates.find(s => s.id === 'sown_poor')) {
+            harvestMultiplier = 0.5;
+        }
+
+        farmIncome = Math.floor(farmIncome * harvestMultiplier);
+
+        // 由于这笔收入可能非常巨大，在结算时突破旧有上限
+        // 这里我们优先加，后面如果有上限规则另外结算
         modifyResource('food', farmIncome);
         income.food = farmIncome;
+
+        // 秋收完后，清除所有的耕种 Flag
+        GameState.activeStates = GameState.activeStates.filter(s => !s.id.startsWith('sown_'));
     }
 
     // 市场生财 (人口基数影响税收活跃度)
@@ -490,7 +521,21 @@ function drawNextEvent() {
         }
     }
 
-    // 2. 常规事件池
+    // 2. 季节性强制卡拦截 (Seasonal Agriculture System)
+    // 遍历总字库寻找当前季节的专属卡（必须要有 condition.season 并且等于当前季节）
+    const seasonalEvent = EVENTS.find(e =>
+        e.condition &&
+        e.condition.season !== undefined &&
+        e.condition.season === GameState.season
+    );
+
+    // 如果找到了当前季节的节气卡，直接强制触发，确保农耕循环一定发生
+    if (seasonalEvent) {
+        GameState.currentEvent = seasonalEvent;
+        return seasonalEvent;
+    }
+
+    // 3. 常规事件池
     if (GameState.eventQueue.length === 0) initEventQueue();
     let event = null;
     while (GameState.eventQueue.length > 0) {
@@ -511,6 +556,10 @@ function drawNextEvent() {
 function checkEventCondition(event) {
     if (!event.condition) return true;
     const c = event.condition;
+
+    // 节气条件 (主要用于强制事件之外的补充判断，虽然目前强制触发了)
+    if (c.season !== undefined && c.season !== GameState.season) return false;
+
     if (c.building && c.maxLevel !== undefined) {
         if (GameState.buildings[c.building] > c.maxLevel) return false;
     }
@@ -566,6 +615,7 @@ function checkEventCondition(event) {
 
 function handleChoice(choice, autoAdvance = true) {
     if (!GameState.currentEvent || GameState.isGameOver) return;
+
 
     const event = GameState.currentEvent;
     let originalChoiceData;
