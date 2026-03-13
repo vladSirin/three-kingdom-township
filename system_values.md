@@ -94,3 +94,4 @@ const BUILDING_DESCRIPTIONS = {
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-03-04 | 初始创建，从 game.js / town.js 提取所有数值常量 |
+
