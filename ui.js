@@ -694,7 +694,16 @@ function renderConstructionStatus(state) {
 // ============================================
 
 function renderEventCard(event) {
-    DOM.cardTitle.textContent = event.title;
+    // 阵营/治国触发标签
+    let conditionBadge = '';
+    const c = event.condition;
+    if (c) {
+        if (c.minAlignment >= 50)       conditionBadge = '<span class="event-badge badge-benevolent">仁义</span>';
+        else if (c.maxAlignment <= -50) conditionBadge = '<span class="event-badge badge-tyrant">暴虐</span>';
+        else if (c.minGovernance >= 50) conditionBadge = '<span class="event-badge badge-legalist">法度</span>';
+        else if (c.maxGovernance <= -50)conditionBadge = '<span class="event-badge badge-schemer">权谋</span>';
+    }
+    DOM.cardTitle.innerHTML = conditionBadge ? `${conditionBadge}${event.title}` : event.title;
     DOM.cardDesc.textContent = event.description;
     DOM.cardCharacter.textContent = getCharacterIcon(event.character);
 
@@ -714,23 +723,32 @@ function getCharacterIcon(charName) {
 
 function getEffectIcons(option) {
     const icons = {
-        morale: '👥',
-        food: '🌾',
-        military: '⚔️',
-        wealth: '💰',
-        reputation: '📜'
+        morale: '👥', food: '🌾', military: '⚔️', wealth: '💰', reputation: '📜'
     };
     const affected = new Set();
+    let alignDelta = 0, govDelta = 0;
 
-    if (option.effects) Object.keys(option.effects).forEach(k => affected.add(k));
-    if (option.outcomes) {
-        option.outcomes.forEach(out => {
-            if (out.effects) Object.keys(out.effects).forEach(k => affected.add(k));
+    const collect = (effects) => {
+        if (!effects) return;
+        Object.entries(effects).forEach(([k, v]) => {
+            if (icons[k]) affected.add(k);
+            if (k === 'alignment') alignDelta += v;
+            if (k === 'governance') govDelta += v;
         });
-    }
+    };
+
+    if (option.effects) collect(option.effects);
+    if (option.outcomes) option.outcomes.forEach(out => collect(out.effects));
 
     let res = Array.from(affected).map(k => icons[k]).join('');
-    return res ? `影响: ${res}` : '影响: 无';
+    const axisHints = [];
+    if (alignDelta > 0) axisHints.push('→仁');
+    else if (alignDelta < 0) axisHints.push('→暴');
+    if (govDelta > 0) axisHints.push('→法');
+    else if (govDelta < 0) axisHints.push('→谋');
+
+    const base = res ? `影响: ${res}` : '影响: 无';
+    return axisHints.length > 0 ? `${base} ${axisHints.join(' ')}` : base;
 }
 
 function setupButton(side, option) {

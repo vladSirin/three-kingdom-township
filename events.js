@@ -129,10 +129,10 @@ const EVENTS = [
             outcome: '你下令减免三成秋税。百姓欢呼雀跃，甚至有人为你立了生祠！'
         },
         neutral: {
-            text: '开仓纳粮',
-            preview: '如常秋税',
-            effects: { morale: 5, wealth: 5 },
-            outcome: '常规的收税比例。府库再次充盈，准备迎接漫长的寒冬。'
+            text: '造册收粮',
+            preview: '按律清查',
+            effects: { morale: 5, wealth: 5, governance: 8 },
+            outcome: '你命人精细清点田亩，按户造册后依规征收。这份严谨在百姓中树立了一定的公信力，府库也再次充盈。'
         },
         right: {
             text: '横征暴敛',
@@ -171,10 +171,10 @@ const EVENTS = [
         character: '剑客',
         description: '一名身披破旧斗篷的剑客来到镇上，请求借宿一晚。他看起来武艺不凡，但眼神中透着疲惫。',
         left: {
-            text: '婉拒',
-            preview: '安全但失礼',
-            effects: { reputation: -5, morale: 2 },
-            outcome: '剑客沉默片刻，转身离去。里正夸你处事稳重，但江湖传闻你此地不甚好客。'
+            text: '依律验查',
+            preview: '按规盘问',
+            effects: { reputation: -3, morale: 2, governance: 5 },
+            outcome: '你依照路引制度核查此人来历，确认其无凭证后予以礼貌驱逐。规矩是规矩，剑客无话可说。'
         },
         neutral: {
             text: '只给一晚',
@@ -275,7 +275,7 @@ const EVENTS = [
                 {
                     weight: 5,
                     modifierTag: 'diplomatic_bonus',
-                    effects: { food: -5, reputation: 2 },
+                    effects: { food: -5, reputation: 2, governance: -5 },
                     outcome: '因你外交得当，使者同意大幅减免，甚至对你的手腕表示赞赏。'
                 },
                 {
@@ -288,8 +288,8 @@ const EVENTS = [
         right: {
             text: '如数上交',
             preview: '弃财保平安',
-            effects: { food: -20, reputation: -15, wealth: 5 },
-            outcome: '由于你表现十分“顺从”，使者打赏了你一些金银，但你在天下的声望落至冰点。'
+            effects: { food: -20, reputation: -15, wealth: 5, governance: 5 },
+            outcome: '由于你表现十分”顺从”，使者打赏了你一些金银，但你在天下的声望落至冰点。'
         }
     },
     {
@@ -344,14 +344,14 @@ const EVENTS = [
         left: {
             text: '安抚斥退',
             preview: '求稳保民',
-            effects: { reputation: -2, morale: 5 },
+            effects: { reputation: -2, morale: 5, governance: 8 },
             outcome: '你安抚了躁动的军队，百姓称赞你的克制。'
         },
         neutral: {
             text: '劫掠商队',
             preview: '得财险名',
-            effects: { wealth: 15, food: 10, reputation: -15 },
-            outcome: '商队被洗劫一空，你获得了补给，但被州郡列为“强盗”，并且被受害商会盯上。',
+            effects: { wealth: 15, food: 10, reputation: -15, governance: -10 },
+            outcome: '商队被洗劫一空，你获得了补给，但被州郡列为”强盗”，并且被受害商会盯上。',
             addState: { id: 'merchant_grudge', duration: 6 }
         },
         right: {
@@ -421,13 +421,13 @@ const EVENTS = [
         left: {
             text: '减免税收',
             preview: '免税得心',
-            effects: { morale: 20, reputation: 10 },
+            effects: { morale: 20, reputation: 10, governance: -3 },
             outcome: '你下令免去今季赋税，百姓欢声雷动。虽然府库未曾进账，但在民众心中你是活菩萨。'
         },
         neutral: {
             text: '维持原额',
             preview: '稳固即利',
-            effects: { wealth: 10, morale: -5, reputation: -3 },
+            effects: { wealth: 10, morale: -5, reputation: -3, governance: 5 },
             outcome: '征收如常。在乱世中，墨守成规也是一种对威信的透支。'
         },
         right: {
@@ -445,19 +445,19 @@ const EVENTS = [
         left: {
             text: '包庇纵容',
             preview: '得财失名',
-            effects: { wealth: 10, morale: -15, reputation: -20 },
-            outcome: '虽然保住了官场平衡并收纳了一些“孝敬”，但民间已将你视为昏庸之辈。'
+            effects: { wealth: 10, morale: -15, reputation: -20, governance: -12 },
+            outcome: '虽然保住了官场平衡并收纳了一些”孝敬”，但民间已将你视为昏庸之辈。'
         },
         neutral: {
             text: '私下警告',
             preview: '中庸之策',
-            effects: { reputation: -5, morale: -5 },
+            effects: { reputation: -5, morale: -5, governance: -5 },
             outcome: '贪官收敛了些，但由于未得惩处，衙役们办事愈发懈怠。'
         },
         right: {
             text: '严惩不贷',
             preview: '得民心损财',
-            effects: { morale: 15, reputation: 12, wealth: -10 },
+            effects: { morale: 15, reputation: 12, wealth: -10, governance: 15 },
             outcome: '贪官被抄家问斩！虽因处理账目产生巨额开支，但小镇风气为之一振。'
         }
     },
@@ -735,14 +735,14 @@ const EVENTS = [
         left: {
             text: '睁一只眼',
             preview: '隐患重重',
-            effects: { wealth: 8, reputation: -15, military: -5 },
+            effects: { wealth: 8, reputation: -15, military: -5, governance: -15 },
             outcome: '你收受了监工的回扣。不久后，修葺的建筑里传出嘎吱作响的声音。（已添加危险建筑隐患）',
             addState: { id: 'shoddy_work', duration: 99 } // 持续性隐患
         },
         right: {
             text: '严查严办',
             preview: '弃财兴威',
-            effects: { wealth: -8, reputation: 10, morale: 5 },
+            effects: { wealth: -8, reputation: 10, morale: 5, governance: 12 },
             outcome: '公开处分腐败者极大振奋了人心，为了重购建材你不得不增拨资金。'
         }
     },
@@ -834,13 +834,13 @@ const EVENTS = [
         left: {
             text: '妥协免税',
             preview: '退让免除',
-            effects: { morale: 8, reputation: -5 },
+            effects: { morale: 8, reputation: -5, governance: -8 },
             outcome: '你选择退让并下达了免税令。虽然未能收到钱粮，管治威信也随之下降，但暴乱和平解散。'
         },
         neutral: {
             text: '逮捕首恶',
             preview: '雷霆手段',
-            effects: { morale: -5, military: -5, wealth: 5 },
+            effects: { morale: -5, military: -5, wealth: 5, governance: 10 },
             outcome: '军队出动抓捕了带头抗议的几人，风波暂时平息。'
         },
         right: {
@@ -1052,6 +1052,62 @@ const EVENTS = [
     },
 
     // ============================================
+    // 治国风格专属卡组 (Governance Exclusive)
+    // ============================================
+    {
+        id: 'legal_code',
+        title: '颁布法典',
+        character: '幕僚',
+        description: '你长期依法行政的风格已深入人心，幕僚建议趁势颁布一套系统性的《治政要则》，以制度固化施政成果。',
+        condition: { minGovernance: 50 },
+        weight: 20,
+        left: {
+            text: '暂缓实施',
+            preview: '维持现状',
+            effects: { governance: -5, reputation: -3 },
+            outcome: '幕僚叹息退下。那些期待法制改革的官员们颇感失望，主公的法度信念似乎也有所动摇。'
+        },
+        neutral: {
+            text: '温和推行',
+            preview: '循序渐进',
+            effects: { wealth: 8, morale: 5, governance: 5 },
+            outcome: '新法以宽松姿态颁行，各方反应平稳。税收征缴更加有序，府库因此略有增收。'
+        },
+        right: {
+            text: '严格执法',
+            preview: '铁腕整肃',
+            effects: { wealth: 15, military: 8, morale: -12, governance: 10 },
+            outcome: '法典以雷霆手段推行！官署效率大幅提升，军纪也随之整肃。然而部分豪绅私下称你"苛政猛于虎"。'
+        }
+    },
+    {
+        id: 'shadow_operation',
+        title: '幕后运作',
+        character: '密使',
+        description: '你的情报网络截获了一封信——邻郡官员正秘密筹备对你不利的行动，但对方浑然不知你已洞悉一切。',
+        condition: { maxGovernance: -50 },
+        weight: 20,
+        left: {
+            text: '公开揭发',
+            preview: '光明正大',
+            effects: { reputation: 10, governance: 10 },
+            outcome: '你选择坦荡应对，公开揭露了对方的图谋，天下人对你的磊落赞叹有加。只是手下谋士面面相觑——这不像是他们认识的主公。'
+        },
+        neutral: {
+            text: '静观其变',
+            preview: '继续渗透',
+            effects: { morale: 3, governance: -5 },
+            outcome: '你命人深入渗透，等待最佳时机出手。对方浑然不知深陷罗网，你的情报网络又悄然延伸了几分。'
+        },
+        right: {
+            text: '反间离间',
+            preview: '不费一兵',
+            effects: { military: 15, wealth: -15, reputation: -8, governance: -10 },
+            outcome: '你伪造了一批书信，在敌方内部制造了严重的信任危机。不费一兵一卒，那只威胁便在内讧中土崩瓦解。代价是你的名声又蒙上了一层阴影。'
+        }
+    },
+
+    // ============================================
     // 政令卡组 (Edicts as Event Cards - CL1)
     // ============================================
     {
@@ -1184,7 +1240,7 @@ const EVENTS = [
         neutral: {
             text: '收买内应',
             preview: '花钱索命',
-            effects: { wealth: -40, alignment: -20 },
+            effects: { wealth: -40, alignment: -20, governance: -12 },
             outcome: '你早已用重金买通了杀手内部的人。死士刚拔刀就被同伴从背后斩首，你的冷酷让全城噤寒。'
         },
         right: {
