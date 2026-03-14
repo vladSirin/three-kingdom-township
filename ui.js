@@ -65,6 +65,12 @@ const DOM = {
     },
     buildingList: document.getElementById('building-list'),
 
+    // 历史日志
+    logBtn: document.getElementById('log-btn'),
+    logModal: document.getElementById('log-modal'),
+    closeLogBtn: document.getElementById('close-log-btn'),
+    logHistoryList: document.getElementById('log-history-list'),
+
     // 个人与家族特性
     profileBtn: document.getElementById('profile-btn'),
     profileModal: document.getElementById('profile-modal'),
@@ -151,6 +157,9 @@ let debugClickCount = 0;
 let debugClickTimer = null;
 
 // 全局暴露渲染函数给 Town.js 调用
+// 历史日志存储
+const _logHistory = [];
+
 // 全局暴露渲染函数给 Town.js 调用
 // 将原有的聊天气泡渲染改为：弹幕系统 (Danmaku)
 window.renderChatLog = function (log) {
@@ -168,6 +177,9 @@ window.renderChatLog = function (log) {
     }
 
     el.innerText = textContent;
+
+    // 存入历史
+    _logHistory.push({ text: textContent, isSystem, html: log.text });
 
     // 随机初始位置和轨迹
     // 限制在屏幕顶部 5% - 25% 的区域，避免遮挡中部的卡片描述文本和底部的选项按钮
@@ -244,6 +256,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn && sidebar) {
         closeBtn.addEventListener('click', () => {
             sidebar.classList.remove('mobile-visible');
+        });
+    }
+
+    // 历史日志面板交互
+    if (DOM.logBtn && DOM.logModal) {
+        DOM.logBtn.addEventListener('click', () => {
+            // 渲染历史记录
+            DOM.logHistoryList.innerHTML = _logHistory.length === 0
+                ? '<p class="log-empty">暂无日志记录。</p>'
+                : _logHistory.map(entry =>
+                    `<div class="log-entry ${entry.isSystem ? 'log-system' : ''}">${entry.html}</div>`
+                ).join('');
+            // 滚动到底部
+            DOM.logHistoryList.scrollTop = DOM.logHistoryList.scrollHeight;
+            DOM.logModal.classList.remove('hidden');
+            SoundSys.slide();
+        });
+    }
+    if (DOM.closeLogBtn && DOM.logModal) {
+        DOM.closeLogBtn.addEventListener('click', () => {
+            DOM.logModal.classList.add('hidden');
+            SoundSys.slide();
+        });
+        DOM.logModal.addEventListener('click', (e) => {
+            if (e.target === DOM.logModal) DOM.logModal.classList.add('hidden');
         });
     }
 

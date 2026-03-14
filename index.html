@@ -7,7 +7,7 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>三国小镇 | Three Kingdoms Township</title>
-    <link rel="stylesheet" href="style.css?v=4.13">
+    <link rel="stylesheet" href="style.css?v=4.14">
 </head>
 
 <body>
@@ -47,6 +47,8 @@
                     <span id="era-year">中平元年</span> <span id="era-season">春</span>
                 </div>
                 <div class="hud-right-actions">
+                    <!-- 历史日志按钮 -->
+                    <button id="log-btn" class="icon-btn">📋</button>
                     <!-- 个人特质与家族按钮 -->
                     <button id="profile-btn" class="icon-btn">👤</button>
                     <!-- 建筑入口小图标 -->
@@ -161,6 +163,15 @@
 
         </div> <!-- 结束 game-screen -->
 
+        <!-- 历史日志 Modal -->
+        <div id="log-modal" class="modal-overlay hidden">
+            <div class="modal-content" id="log-modal-content">
+                <button class="close-btn" id="close-log-btn">×</button>
+                <h2>📋 历史日志</h2>
+                <div id="log-history-list"></div>
+            </div>
+        </div>
+
         <!-- 主公档案 Modal -->
         <div id="profile-modal" class="modal-overlay hidden">
             <div class="modal-content">
@@ -222,10 +233,10 @@
                 </div>
             </div>
         </div>
-        <script src="events.js?v=4.13"></script>
-        <script src="game.js?v=4.13"></script>
-        <script src="town.js?v=4.13"></script>
-        <script src="ui.js?v=4.13"></script>
+        <script src="events.js?v=4.14"></script>
+        <script src="game.js?v=4.14"></script>
+        <script src="town.js?v=4.14"></script>
+        <script src="ui.js?v=4.14"></script>
 </body>
 
 </html>

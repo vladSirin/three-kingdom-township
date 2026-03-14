@@ -771,6 +771,41 @@ button#restart-btn:active {
     box-shadow: 0 0 40px rgba(251, 191, 36, 0.2);
 }
 
+#log-modal-content {
+    background: radial-gradient(circle at 50% 10%, #1a1f2a 0%, #0d1117 90%);
+    border: 1px solid var(--accent-gold);
+    box-shadow: 0 0 40px rgba(251, 191, 36, 0.2);
+    max-width: 520px;
+    max-height: 75vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#log-history-list {
+    overflow-y: auto;
+    flex: 1;
+    margin-top: 12px;
+    padding-right: 4px;
+}
+
+.log-entry {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    font-size: 0.85rem;
+    color: #ccc;
+    line-height: 1.5;
+}
+
+.log-entry.log-system {
+    color: var(--accent-gold);
+}
+
+.log-empty {
+    color: #666;
+    text-align: center;
+    margin-top: 20px;
+}
+
 .profile-section {
     margin-top: 15px;
     padding: 15px;
