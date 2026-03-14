@@ -160,46 +160,54 @@ let debugClickTimer = null;
 // 历史日志存储
 const _logHistory = [];
 
+// 弹幕轨道调度 —— 固定 4 条轨道，每条追踪"最早可用时间"，保证绝对不重叠
+const _DANMAKU_LANES = ['6%', '12%', '18%', '24%'];
+const _laneReadyAt = new Array(_DANMAKU_LANES.length).fill(0); // ms timestamp
+
 // 全局暴露渲染函数给 Town.js 调用
 // 将原有的聊天气泡渲染改为：弹幕系统 (Danmaku)
 window.renderChatLog = function (log) {
     if (!DOM.danmakuContainer) return;
 
-    const el = document.createElement('div');
-
     // 是否为系统/NPC提示
     const isSystem = log.type === 'system' || log.type === 'action';
-    el.className = `danmaku-item ${isSystem ? 'system' : ''}`;
 
     let textContent = log.text;
     if (!isSystem && log.sender && log.sender.name !== '你') {
         textContent = `${log.sender.name}: ${textContent}`;
     }
 
-    el.innerText = textContent;
-
     // 存入历史
     _logHistory.push({ text: textContent, isSystem, html: log.text });
 
-    // 随机初始位置和轨迹
-    // 限制在屏幕顶部 5% - 25% 的区域，避免遮挡中部的卡片描述文本和底部的选项按钮
-    const topPercent = 5 + Math.random() * 20;
-    el.style.top = `${topPercent}%`;
-
-    // 随机持续时间 —— 文字越长速度越慢
-    const baseSpeed = 5; // 基础秒数
-    const extraPerChar = 0.15; // 每多一个字加 0.15秒
+    // 文字越长速度越慢
+    const baseSpeed = 5;
+    const extraPerChar = 0.15;
     const duration = baseSpeed + Math.max(0, textContent.length - 10) * extraPerChar;
-    el.style.animation = `danmakuScroll ${duration}s linear forwards`;
+    const durationMs = duration * 1000;
 
-    DOM.danmakuContainer.appendChild(el);
+    // 选择最早空闲的轨道
+    const now = Date.now();
+    let best = 0;
+    for (let i = 1; i < _DANMAKU_LANES.length; i++) {
+        if (_laneReadyAt[i] < _laneReadyAt[best]) best = i;
+    }
+    const startAt = Math.max(now, _laneReadyAt[best]);
+    // 该轨道下次可用时间 = 本条动画完全退出屏幕后
+    _laneReadyAt[best] = startAt + durationMs;
 
-    // 动画结束后移除 DOM
+    const delay = startAt - now;
     setTimeout(() => {
-        if (el && el.parentNode) {
-            el.parentNode.removeChild(el);
-        }
-    }, duration * 1000);
+        const el = document.createElement('div');
+        el.className = `danmaku-item ${isSystem ? 'system' : ''}`;
+        el.innerText = textContent;
+        el.style.top = _DANMAKU_LANES[best];
+        el.style.animation = `danmakuScroll ${duration}s linear forwards`;
+        DOM.danmakuContainer.appendChild(el);
+        setTimeout(() => {
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, durationMs);
+    }, delay);
 };
 
 // UI 浮窗 (Toast) - 用于状态变化
