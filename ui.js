@@ -78,9 +78,11 @@ const DOM = {
     traitsList: document.getElementById('traits-list'),
     toastContainer: document.getElementById('toast-container'),
 
-    // 倾向光谱 (Alignment Spectrum)
-    alignmentMarker: document.getElementById('alignment-marker'),
+    // 阵营九宫格 (2D Alignment Grid)
+    alignmentGrid: document.getElementById('alignment-grid'),
+    alignmentDot: document.getElementById('alignment-dot'),
     alignmentStatusText: document.getElementById('alignment-status-text'),
+    alignmentValues: document.getElementById('alignment-values'),
     alignmentBuffs: document.getElementById('alignment-buffs'),
 
     // 中控台 (Hub) -> 改为弹幕层
@@ -391,45 +393,80 @@ function updateUI() {
     DOM.eraYear.textContent = Game.getYearName();
     DOM.eraSeason.textContent = Game.getSeasonName();
 
-    // 更新倾向光谱 (Profile View)
-    if (DOM.alignmentMarker && state.alignment !== undefined) {
+    // 更新阵营九宫格 (Profile View)
+    if (DOM.alignmentGrid && state.alignment !== undefined) {
         const align = state.alignment;
-        // Map -100 ~ 100 to 0% ~ 100%
-        const percent = Math.max(0, Math.min(100, ((align + 100) / 200) * 100));
-        DOM.alignmentMarker.style.left = `${percent}%`;
+        const gov = state.governance ?? 0;
 
-        const stage = Game.getAlignmentStage ? Game.getAlignmentStage() : null;
-        if (stage) {
-            DOM.alignmentStatusText.textContent = `当前评价：${stage.name} (${align})`;
-            DOM.alignmentStatusText.className = `alignment-status-text align-${stage.id}`;
+        // 移动白点 (X: 法度左=0%, 权谋右=100% ; Y: 仁义上=0%, 暴虐下=100%)
+        const dotX = ((100 - gov) / 200) * 100;
+        const dotY = ((100 - align) / 200) * 100;
+        if (DOM.alignmentDot) {
+            DOM.alignmentDot.style.left = `${dotX}%`;
+            DOM.alignmentDot.style.top  = `${dotY}%`;
+        }
 
-            let buffHTML = '';
-            if (stage.modifiers) {
+        // 高亮当前格
+        const activeRow = align > 33 ? 0 : align < -33 ? 2 : 1;
+        const activeCol = gov  > 33 ? 0 : gov  < -33 ? 2 : 1;
+        DOM.alignmentGrid.querySelectorAll('.grid-cell').forEach(cell => {
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            cell.classList.toggle('active', r === activeRow && c === activeCol);
+        });
+
+        // 阵营名称
+        const archetype = Game.getArchetype ? Game.getArchetype() : { name: '随波之主' };
+        if (DOM.alignmentStatusText) {
+            DOM.alignmentStatusText.textContent = archetype.name;
+        }
+
+        // 数值显示
+        if (DOM.alignmentValues) {
+            const alignSign = align >= 0 ? '+' : '';
+            const govSign   = gov >= 0 ? '+' : '';
+            DOM.alignmentValues.textContent = `仁义 ${alignSign}${align} · 法度 ${govSign}${gov}`;
+        }
+
+        // 被动效果（合并两轴）
+        const MODIFIER_LABELS = {
+            rebellion_threshold_flat: '叛乱阈值',
+            event_prob_ambitious_hero: '野心家来投率',
+            event_prob_good_hero: '正面英雄来投率',
+            morale_change_flat: '季末民心变化',
+            reputation_change_flat: '季末声望变化',
+            military_bonus: '军事选择优势',
+            wealth_production_mult: '商税产出',
+            diplomatic_bonus: '外交选择优势',
+            success_rate: '通用成功率',
+        };
+
+        const allMods = {};
+        const alignStage = Game.getAlignmentStage ? Game.getAlignmentStage() : null;
+        const govStage   = Game.getGovernanceStage ? Game.getGovernanceStage() : null;
+        [alignStage, govStage].forEach(stage => {
+            if (stage && stage.modifiers) {
                 for (const [k, v] of Object.entries(stage.modifiers)) {
-                    let sign = v > 0 ? '+' : '';
-                    let title = k;
-                    if (k === 'rebellion_threshold_flat') title = '叛乱阈值';
-                    else if (k === 'event_prob_ambitious_hero') title = '野心家来投率';
-                    else if (k === 'event_prob_good_hero') title = '正面英雄来投率';
-                    else if (k === 'morale_change_flat') title = '季末民心变化';
-                    else if (k === 'reputation_change_flat') title = '季末声望变化';
-                    else if (k === 'military_bonus') title = '军事选择优势';
-                    else if (k === 'wealth_production_mult') title = '商税产出';
-
-                    let valStr = `${sign}${v}`;
-                    if (k.includes('mult')) valStr = `${sign}${v * 100}%`;
-
-                    buffHTML += `<div class="buff-item"><span class="buff-label">${title}</span><span class="buff-val">${valStr}</span></div>`;
+                    allMods[k] = (allMods[k] || 0) + v;
                 }
             }
-            if (DOM.alignmentBuffs) {
-                if (buffHTML) {
-                    DOM.alignmentBuffs.style.display = 'block';
-                    DOM.alignmentBuffs.innerHTML = `<h4>当前被动效果：</h4>${buffHTML}`;
-                } else {
-                    DOM.alignmentBuffs.style.display = 'none';
-                    DOM.alignmentBuffs.innerHTML = '';
-                }
+        });
+
+        let buffHTML = '';
+        for (const [k, v] of Object.entries(allMods)) {
+            if (v === 0) continue;
+            const sign = v > 0 ? '+' : '';
+            const title = MODIFIER_LABELS[k] || k;
+            const valStr = k.includes('mult') ? `${sign}${Math.round(v * 100)}%` : `${sign}${v}`;
+            buffHTML += `<div class="buff-item"><span class="buff-label">${title}</span><span class="buff-val">${valStr}</span></div>`;
+        }
+        if (DOM.alignmentBuffs) {
+            if (buffHTML) {
+                DOM.alignmentBuffs.style.display = 'block';
+                DOM.alignmentBuffs.innerHTML = `<h4>当前被动效果：</h4>${buffHTML}`;
+            } else {
+                DOM.alignmentBuffs.style.display = 'none';
+                DOM.alignmentBuffs.innerHTML = '';
             }
         }
     }

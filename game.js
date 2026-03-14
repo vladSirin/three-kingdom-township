@@ -60,8 +60,11 @@ const GameState = {
     // 临时与环境状态
     activeStates: [],  // [{id: 'plague', duration: 4}]
 
-    // 主公倾向光谱 [-100, 100]
+    // 主公倾向光谱 [-100, 100]  (仁义 ↔ 暴虐)
     alignment: 0,
+
+    // 主公治国风格 [-100, 100]  (法度 ↔ 权谋)
+    governance: 0,
 
     // 劫掠恶名层数 (血海深仇层数)
     infamy: 0,
@@ -163,7 +166,7 @@ const STATES_DICT = {
     'crisis_food_high': { name: '囤积招患', modifiers: {} }
 };
 
-// 主公倾向光谱定义
+// 主公倾向光谱定义 (仁义 ↔ 暴虐)
 const ALIGNMENT_STAGES = [
     { id: 'tyrant', name: '暴虐', min: -100, max: -50, modifiers: { rebellion_threshold_flat: -20, event_prob_ambitious_hero: 50, event_prob_good_hero: -100 } },
     { id: 'harsh', name: '严酷', min: -49, max: -20, modifiers: { morale_change_flat: -2, military_bonus: 5 } },
@@ -172,8 +175,34 @@ const ALIGNMENT_STAGES = [
     { id: 'benevolent', name: '仁义', min: 50, max: 100, modifiers: { reputation_change_flat: 2, wealth_production_mult: -0.1 } }
 ];
 
+// 主公治国风格定义 (法度 ↔ 权谋)
+const GOVERNANCE_STAGES = [
+    { id: 'schemer', name: '权谋', min: -100, max: -50, modifiers: { diplomatic_bonus: 10, success_rate: 5, reputation_change_flat: -1 } },
+    { id: 'flexible', name: '机变', min: -49, max: -20, modifiers: { diplomatic_bonus: 5, success_rate: 3 } },
+    { id: 'neutral_gov', name: '中立', min: -19, max: 19, modifiers: {} },
+    { id: 'orderly', name: '守规', min: 20, max: 49, modifiers: { wealth_production_mult: 0.05 } },
+    { id: 'legalist', name: '法度', min: 50, max: 100, modifiers: { wealth_production_mult: 0.1, military_bonus: 5 } }
+];
+
+// 九宫格阵营名 [row][col]  row: 0=仁善 1=中庸 2=霸道  col: 0=法度 1=中立 2=权谋
+const ARCHETYPE_GRID = [
+    ['仁法明君', '仁义之主', '仁义谋主'],
+    ['守正之主', '随波之主', '机变之主'],
+    ['法家霸主', '暴虐之主', '奸雄乱世']
+];
+
 function getAlignmentStage() {
     return ALIGNMENT_STAGES.find(s => GameState.alignment >= s.min && GameState.alignment <= s.max) || ALIGNMENT_STAGES[2];
+}
+
+function getGovernanceStage() {
+    return GOVERNANCE_STAGES.find(s => GameState.governance >= s.min && GameState.governance <= s.max) || GOVERNANCE_STAGES[2];
+}
+
+function getArchetype() {
+    const row = GameState.alignment > 33 ? 0 : GameState.alignment < -33 ? 2 : 1;
+    const col = GameState.governance > 33 ? 0 : GameState.governance < -33 ? 2 : 1;
+    return { row, col, name: ARCHETYPE_GRID[row][col] };
 }
 
 const EffectSystem = {
@@ -193,9 +222,13 @@ const EffectSystem = {
     calcModifiers() {
         const mods = this.getBaseModifiers();
 
-        // 1. 倾向 Buff
+        // 1. 倾向 Buff (仁义↔暴虐)
         const stage = getAlignmentStage();
         if (stage && stage.modifiers) this._apply(mods, stage.modifiers);
+
+        // 1b. 治国风格 Buff (法度↔权谋)
+        const govStage = getGovernanceStage();
+        if (govStage && govStage.modifiers) this._apply(mods, govStage.modifiers);
 
         // 2. 状态 Buff
         GameState.activeStates.forEach(state => {
@@ -261,6 +294,10 @@ function modifyResources(changes) {
 
         if (k === 'alignment') {
             GameState.alignment = Math.max(-100, Math.min(100, GameState.alignment + v));
+        } else if (k === 'governance') {
+            // 法度↔权谋轴移动速度为 alignment 的 60%
+            const delta = v * 0.6;
+            GameState.governance = Math.max(-100, Math.min(100, GameState.governance + delta));
         } else if (k === 'infamy') {
             GameState.infamy = Math.max(0, GameState.infamy + v);
             if (window.showToast && v > 0) {
@@ -695,6 +732,12 @@ function checkEventCondition(event) {
     if (c.maxAlignment !== undefined) {
         if (GameState.alignment > c.maxAlignment) return false;
     }
+    if (c.minGovernance !== undefined) {
+        if (GameState.governance < c.minGovernance) return false;
+    }
+    if (c.maxGovernance !== undefined) {
+        if (GameState.governance > c.maxGovernance) return false;
+    }
 
     if (c.isConstructing !== undefined) {
         const isBuilding = GameState.constructions.length > 0;
@@ -955,6 +998,7 @@ function getGameStateForUI() {
         constructions: GameState.constructions,
         activeStates: GameState.activeStates,
         alignment: GameState.alignment,
+        governance: GameState.governance,
         infamy: GameState.infamy,
         traits: GameState.traits, // 保留以防其他地方报错，但废弃
         year: GameState.year,
@@ -1010,6 +1054,9 @@ window.Game = {
     getPopulationCap,
     addActiveState,
     getAlignmentStage,
+    getGovernanceStage,
+    getArchetype,
+    ARCHETYPE_GRID,
     STATES_DICT,
     RESOURCE_NAMES,
     RESOURCE_ICONS,

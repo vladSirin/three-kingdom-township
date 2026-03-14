@@ -178,20 +178,42 @@
                 <button class="close-btn" id="close-profile-btn">×</button>
                 <h2>主公档案</h2>
                 <div class="profile-section">
-                    <h3>主公倾向 (Alignment)</h3>
+                    <h3>主公阵营</h3>
                     <div id="alignment-container" class="alignment-container">
-                        <div class="alignment-labels">
-                            <span class="align-tyrant">暴虐</span>
-                            <span class="align-neutral">中庸</span>
-                            <span class="align-benevolent">仁义</span>
+                        <!-- 顶部轴标签 -->
+                        <div class="grid-labels-row">
+                            <span></span>
+                            <span class="grid-label align-benevolent">仁义</span>
+                            <span></span>
                         </div>
-                        <div class="alignment-track">
-                            <div id="alignment-marker" class="alignment-marker"></div>
+                        <!-- 中间行：左标签 + 九宫格 + 右标签 -->
+                        <div class="grid-middle-row">
+                            <span class="grid-label align-legalist">法度</span>
+                            <div class="alignment-grid" id="alignment-grid">
+                                <div class="grid-cell" data-row="0" data-col="0">仁法明君</div>
+                                <div class="grid-cell" data-row="0" data-col="1">仁义之主</div>
+                                <div class="grid-cell" data-row="0" data-col="2">仁义谋主</div>
+                                <div class="grid-cell" data-row="1" data-col="0">守正之主</div>
+                                <div class="grid-cell" data-row="1" data-col="1">随波之主</div>
+                                <div class="grid-cell" data-row="1" data-col="2">机变之主</div>
+                                <div class="grid-cell" data-row="2" data-col="0">法家霸主</div>
+                                <div class="grid-cell" data-row="2" data-col="1">暴虐之主</div>
+                                <div class="grid-cell" data-row="2" data-col="2">奸雄乱世</div>
+                                <div id="alignment-dot" class="alignment-dot"></div>
+                            </div>
+                            <span class="grid-label align-schemer">权谋</span>
                         </div>
-                        <div id="alignment-status-text" class="alignment-status-text">当前评价：中庸</div>
+                        <!-- 底部轴标签 -->
+                        <div class="grid-labels-row">
+                            <span></span>
+                            <span class="grid-label align-tyrant">暴虐</span>
+                            <span></span>
+                        </div>
+                        <div id="alignment-status-text" class="alignment-status-text">随波之主</div>
+                        <div id="alignment-values" class="alignment-values">仁义 0 · 法度 0</div>
                         <div id="alignment-buffs" class="alignment-buffs"></div>
                     </div>
-                    <p class="profile-hint">* 你的抉择左右着你的倾向(-100到100)。它正潜移默化地影响着天下对你的评价，并可能招致截然不同的事件。</p>
+                    <p class="profile-hint">* 纵轴代表仁义↔暴虐，横轴代表法度↔权谋。你的每一次抉择都在悄然塑造你的阵营。</p>
                 </div>
                 <div class="profile-section" style="margin-top: 20px;">
                     <h3>家族与子嗣 (Family)</h3>
