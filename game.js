@@ -382,9 +382,6 @@ function endOfSeason() {
         return [];
     }
 
-    // 环境隐性状态检测 (Environment-triggered States)
-    checkEnvironmentStates();
-
     const completed = processConstructions();
     const income = applyBuildingIncome();
 
@@ -434,10 +431,13 @@ function endOfSeason() {
         }
     }
 
+    // 环境隐性状态检测 — 在当季收入与消耗结算后再检测
+    checkEnvironmentStates();
+
     // [v12.6] 季报日志
     if (window.renderChatLog) {
         const parts = [];
-        if (income.food > 0) parts.push(`秋收获粮 ${income.food}`);
+        if (income.food > 0) parts.push(`${income.foodSeasonLabel || '农田'} +${income.food}`);
         if (income.wealth > 0) parts.push(`市场收税 ${income.wealth}`);
         parts.push(`人丁消耗 ${foodConsumption}粮`);
         if (overflowPenalty) parts.push(`(人口拥挤导致消耗翻倍)`);
@@ -474,28 +474,34 @@ function applyBuildingIncome() {
     let income = { food: 0, wealth: 0 };
 
     // --- 【四季农耕】农田产粮 ---
-    // 只有在秋季 (Season 2) 才能产出全部口粮，产出量为基础（受人口与模组影响）的 4 倍，以支撑一年的消耗。
-    if (b.farm > 0 && GameState.season === 2) {
-        let farmIncome = b.farm * (pop / 20) * 4.1;
-        farmIncome *= mods.food_production_mult;
+    // 年总量系数 4.1 按四季分配：春0.41 / 夏0.82 / 秋2.87 / 冬0（合计=4.1）
+    if (b.farm > 0) {
+        const baseUnit = b.farm * (pop / 20);
+        const foodMult = mods.food_production_mult;
+        const isBountiful = GameState.activeStates.find(s => s.id === 'sown_bountiful');
+        const isPoor      = GameState.activeStates.find(s => s.id === 'sown_poor');
 
-        // 根据春季播种的 state flag 计算丰欠
-        let harvestMultiplier = 1.0;
-        if (GameState.activeStates.find(s => s.id === 'sown_bountiful')) {
-            harvestMultiplier = 1.5;
-        } else if (GameState.activeStates.find(s => s.id === 'sown_poor')) {
-            harvestMultiplier = 0.5;
+        if (GameState.season === 0) {
+            // 春：小量 (0.41×)，宿麦/菜蔬，不受本年播种修正
+            const springIncome = Math.floor(baseUnit * 0.41 * foodMult);
+            if (springIncome > 0) { modifyResource('food', springIncome); income.food = springIncome; }
+            income.foodSeasonLabel = '春耕小收';
+        } else if (GameState.season === 1) {
+            // 夏：中量 (0.82×)，庄稼拔节，轻度受播种修正
+            let mult = isBountiful ? 1.2 : isPoor ? 0.8 : 1.0;
+            const summerIncome = Math.floor(baseUnit * 0.82 * foodMult * mult);
+            if (summerIncome > 0) { modifyResource('food', summerIncome); income.food = summerIncome; }
+            income.foodSeasonLabel = '夏粮收割';
+        } else if (GameState.season === 2) {
+            // 秋：主收获 (2.87×)，全量播种修正
+            let mult = isBountiful ? 1.5 : isPoor ? 0.5 : 1.0;
+            const autumnIncome = Math.floor(baseUnit * 2.87 * foodMult * mult);
+            if (autumnIncome > 0) { modifyResource('food', autumnIncome); income.food = autumnIncome; }
+            income.foodSeasonLabel = '秋收获粮';
+            // 秋收完后，清除所有的耕种 Flag
+            GameState.activeStates = GameState.activeStates.filter(s => !s.id.startsWith('sown_'));
         }
-
-        farmIncome = Math.floor(farmIncome * harvestMultiplier);
-
-        // 由于这笔收入可能非常巨大，在结算时突破旧有上限
-        // 这里我们优先加，后面如果有上限规则另外结算
-        modifyResource('food', farmIncome);
-        income.food = farmIncome;
-
-        // 秋收完后，清除所有的耕种 Flag
-        GameState.activeStates = GameState.activeStates.filter(s => !s.id.startsWith('sown_'));
+        // 冬季 (season === 3): 无产出
     }
 
     // 市场生财 (人口基数影响税收活跃度)
@@ -554,19 +560,31 @@ function applyBuildingIncome() {
 function checkEnvironmentStates() {
     const r = GameState.resources;
 
-    // 检测饥荒
+    // 检测饥荒（触发 <10，解除 >=15，迟滞防止震荡）
     if (r.food < 10 && GameState.population > 20) {
         addActiveState('starving', 2);
+    } else if (r.food >= 15) {
+        const idx = GameState.activeStates.findIndex(s => s.id === 'starving');
+        if (idx > -1) {
+            GameState.activeStates.splice(idx, 1);
+            if (window.showToast) window.showToast('✨ 饥荒解除：粮仓逐渐充实，百姓得以果腹。', 'positive');
+        }
     }
 
     // 检测待宰肥羊
     if (r.wealth > 60 && r.military < 30) {
         addActiveState('fat_sheep', 2);
+    } else if (r.military >= 35 || r.wealth <= 50) {
+        const idx = GameState.activeStates.findIndex(s => s.id === 'fat_sheep');
+        if (idx > -1) GameState.activeStates.splice(idx, 1);
     }
 
     // 检测安居乐业
     if (r.morale > 80 && r.food > 50) {
         addActiveState('peaceful', 2);
+    } else if (r.morale <= 70 || r.food <= 40) {
+        const idx = GameState.activeStates.findIndex(s => s.id === 'peaceful');
+        if (idx > -1) GameState.activeStates.splice(idx, 1);
     }
 }
 
