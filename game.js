@@ -156,6 +156,10 @@ const STATES_DICT = {
         name: '建筑隐患',
         modifiers: { morale_change_flat: -2, event_prob_hazard: 100 }
     },
+    'merchant_grudge': {
+        name: '商贾积怨',
+        modifiers: { wealth_change_flat: -3, event_prob_trade_embargo: 200 }
+    },
     // ---- 倒计时危机状态 ----
     'crisis_food_low': { name: '断粮崩溃', modifiers: { morale_change_flat: -10, pop_growth_flat: -5 } },
     'crisis_morale_low': { name: '民怨沸腾', modifiers: { pop_growth_flat: -5 } },
@@ -641,8 +645,13 @@ function addActiveState(id, duration) {
 // 事件系统
 // ============================================
 
+// 最近出现过的事件 ID 缓冲（防止同一事件连续出现）
+const _recentEventIds = [];
+const _RECENT_BUFFER = 3;
+
 function initEventQueue() {
-    GameState.eventQueue = [...EVENTS].sort(() => Math.random() - 0.5);
+    GameState.eventQueue = []; // 保留字段兼容性，不再使用队列逻辑
+    _recentEventIds.length = 0;
 }
 
 function drawNextEvent() {
@@ -656,22 +665,38 @@ function drawNextEvent() {
         }
     }
 
-    // 2. 常规事件池
-    if (GameState.eventQueue.length === 0) initEventQueue();
-    let event = null;
-    while (GameState.eventQueue.length > 0) {
-        const candidate = GameState.eventQueue.pop();
-        if (checkEventCondition(candidate)) {
-            event = candidate;
-            break;
-        }
+    // 2. 获取当前 modifier（用于动态权重加成）
+    const mods = EffectSystem.calcModifiers();
+
+    // 3. 筛选满足条件的事件，优先排除最近出现过的
+    let eligible = EVENTS.filter(e => checkEventCondition(e));
+    const nonRecent = eligible.filter(e => !_recentEventIds.includes(e.id));
+    if (nonRecent.length > 0) eligible = nonRecent;
+
+    if (eligible.length === 0) eligible = EVENTS; // 极端兜底
+
+    // 4. 带权重的随机选取
+    // 每个事件的有效权重 = 基础 weight（默认10）+ 状态动态加成（modifierTag）
+    const weighted = eligible.map(e => {
+        let w = e.weight != null ? e.weight : 10;
+        if (e.modifierTag && mods[e.modifierTag]) w += mods[e.modifierTag];
+        return { event: e, weight: Math.max(1, w) };
+    });
+
+    const total = weighted.reduce((sum, item) => sum + item.weight, 0);
+    let rand = Math.random() * total;
+    let selected = weighted[weighted.length - 1].event;
+    for (const item of weighted) {
+        rand -= item.weight;
+        if (rand <= 0) { selected = item.event; break; }
     }
-    if (!event && GameState.eventQueue.length === 0) {
-        initEventQueue();
-        event = GameState.eventQueue.pop();
-    }
-    GameState.currentEvent = event;
-    return event;
+
+    // 5. 记录最近出现的事件
+    _recentEventIds.push(selected.id);
+    if (_recentEventIds.length > _RECENT_BUFFER) _recentEventIds.shift();
+
+    GameState.currentEvent = selected;
+    return selected;
 }
 
 function checkEventCondition(event) {
@@ -925,11 +950,13 @@ function createConstructionCompleteEvent(construction) {
  */
 function resolveOutcome(choiceData) {
     if (!choiceData.outcomes) return choiceData;
+    // 合并静态 modifier 与 EffectSystem 动态 modifier（使 success_rate、military_bonus 等真正生效）
+    const dynMods = EffectSystem.calcModifiers();
     let totalWeight = 0;
     const items = choiceData.outcomes.map(out => {
         let weight = out.weight || 10;
-        if (out.modifierTag && GameState.modifiers[out.modifierTag]) {
-            weight += GameState.modifiers[out.modifierTag];
+        if (out.modifierTag) {
+            weight += (GameState.modifiers[out.modifierTag] || 0) + (dynMods[out.modifierTag] || 0);
         }
         totalWeight += weight;
         return { ...out, finalWeight: weight };

@@ -1181,6 +1181,7 @@ const EVENTS = [
         description: '你此前劫掠商队的行径触怒了州郡商会，他们联手封锁了小镇的贸易路线。',
         condition: { state: 'merchant_grudge' },
         weight: 80, // 极高权重，状态期间必定反复触发
+        modifierTag: 'event_prob_trade_embargo',
         left: {
             text: '重金赔罪',
             preview: '破财消灾',
