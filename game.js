@@ -483,14 +483,14 @@ function applyBuildingIncome() {
 
         if (GameState.season === 0) {
             // 春：小量 (0.41×)，宿麦/菜蔬，不受本年播种修正
-            const springIncome = Math.floor(baseUnit * 0.41 * foodMult);
-            if (springIncome > 0) { modifyResource('food', springIncome); income.food = springIncome; }
+            const springIncome = Math.max(1, Math.floor(baseUnit * 0.41 * foodMult));
+            modifyResource('food', springIncome); income.food = springIncome;
             income.foodSeasonLabel = '春耕小收';
         } else if (GameState.season === 1) {
             // 夏：中量 (0.82×)，庄稼拔节，轻度受播种修正
             let mult = isBountiful ? 1.2 : isPoor ? 0.8 : 1.0;
-            const summerIncome = Math.floor(baseUnit * 0.82 * foodMult * mult);
-            if (summerIncome > 0) { modifyResource('food', summerIncome); income.food = summerIncome; }
+            const summerIncome = Math.max(1, Math.floor(baseUnit * 0.82 * foodMult * mult));
+            modifyResource('food', summerIncome); income.food = summerIncome;
             income.foodSeasonLabel = '夏粮收割';
         } else if (GameState.season === 2) {
             // 秋：主收获 (2.87×)，全量播种修正
